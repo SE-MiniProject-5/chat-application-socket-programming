@@ -96,16 +96,25 @@ function registerUser(db, username, password) {
 }
 
 /**
- * Authenticate a user with username and password (FR-03)
+ * Authenticate a user with username and password.
+ * Implements FR-20:
+ * "When login fails, the system shall display the message 'Invalid username or password'
+ *  and shall not indicate which of the two was wrong."
  */
 function loginUser(db, username, password) {
-  if (!username || !password) {
-    return { success: false, message: 'Username and password are required' };
+  if (!username || typeof username !== 'string' || !password || typeof password !== 'string') {
+    return { success: false, message: 'Invalid username or password' };
+  }
+
+  const cleanUsername = username.trim();
+  if (cleanUsername.length === 0 || password.length === 0) {
+    return { success: false, message: 'Invalid username or password' };
   }
 
   const stmt = db.prepare('SELECT id, username, password_hash FROM users WHERE LOWER(username) = LOWER(?)');
-  const user = stmt.get(username.trim());
+  const user = stmt.get(cleanUsername);
 
+  // If user does not exist or password does not match, return identical error (FR-20)
   if (!user || !verifyPassword(password, user.password_hash)) {
     return { success: false, message: 'Invalid username or password' };
   }

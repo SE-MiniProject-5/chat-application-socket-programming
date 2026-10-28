@@ -320,7 +320,8 @@ async function handleLogin(event) {
     const data = await response.json();
 
     if (!response.ok || !data.success) {
-      showAlert(data.message || 'Login failed', 'error');
+      // FR-20: Display "Invalid username or password" without revealing which was wrong
+      showAlert(data.message || 'Invalid username or password', 'error');
     } else {
       currentUser = data.user;
       sessionStorage.setItem('chat_user', JSON.stringify(currentUser));
