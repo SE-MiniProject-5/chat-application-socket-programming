@@ -29,6 +29,9 @@ function initWebSocket() {
         const data = JSON.parse(event.data);
         if (data.type === 'chat_message') {
           appendMessage(data);
+        } else if (data.type === 'private_message') {
+          // FR-23: Private message received
+          appendMessage(data);
         } else if (data.type === 'presence') {
           updateOnlineMembers(data.members);
         } else if (data.type === 'room_joined') {
@@ -160,16 +163,21 @@ function renderMessageHistory(history) {
 }
 
 // FR-11: Displays sender username with every message
+// FR-23: Displays private message badge and recipient details
 function appendMessage(msg) {
   const container = document.getElementById('messages-container');
   const item = document.createElement('div');
-  item.className = 'message-item';
+  item.className = `message-item ${msg.isPrivate ? 'private' : ''}`;
 
   const isSelf = currentUser && (msg.sender === currentUser.username || msg.userId === currentUser.id);
+  const privateBadge = msg.isPrivate 
+    ? `<span class="badge-private">🔒 Private ${isSelf ? `to @${escapeHtml(msg.recipient)}` : `from @${escapeHtml(msg.sender)}`}</span>` 
+    : '';
 
   item.innerHTML = `
     <div class="message-meta">
       <span class="message-sender ${isSelf ? 'self' : ''}">${escapeHtml(msg.sender)}</span>
+      ${privateBadge}
       <span class="message-time">${msg.timestamp || ''}</span>
     </div>
     <div class="message-text">${escapeHtml(msg.content)}</div>
@@ -191,15 +199,60 @@ function escapeHtml(str) {
 async function handleSendMessage(event) {
   event.preventDefault();
   const input = document.getElementById('message-input');
-  const content = input.value.trim();
+  const rawContent = input.value.trim();
 
-  if (!content || !currentRoom) return;
+  if (!rawContent) return;
+
+  // FR-23: Detect private whisper command (/w <username> <message> or /dm <username> <message>)
+  const dmMatch = rawContent.match(/^\/(?:w|dm)\s+([A-Za-z0-9_]+)\s+(.+)$/i);
+  if (dmMatch) {
+    const recipient = dmMatch[1];
+    const dmContent = dmMatch[2];
+
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: 'send_private_message',
+        recipient: recipient,
+        content: dmContent
+      }));
+      input.value = '';
+    } else {
+      try {
+        const res = await fetch('/api/messages/private', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            senderId: currentUser ? currentUser.id : null,
+            senderUsername: currentUser ? currentUser.username : 'Anonymous',
+            recipientUsername: recipient,
+            content: dmContent
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          appendMessage(data.data);
+          input.value = '';
+        } else {
+          showAlert(data.message, 'error');
+        }
+      } catch (err) {
+        showAlert('Failed to send private message', 'error');
+      }
+    }
+    return;
+  }
+
+  // Regular room chat message
+  if (!currentRoom) {
+    showAlert('Please join a room or use /w <username> <message> to send a private message', 'error');
+    return;
+  }
 
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({
       type: 'send_message',
       roomId: currentRoom.id,
-      content: content
+      content: rawContent
     }));
     input.value = '';
   } else {
@@ -211,7 +264,7 @@ async function handleSendMessage(event) {
         body: JSON.stringify({
           userId: currentUser ? currentUser.id : null,
           username: currentUser ? currentUser.username : 'Anonymous',
-          content: content
+          content: rawContent
         })
       });
       const data = await res.json();

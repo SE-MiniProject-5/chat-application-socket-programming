@@ -153,6 +153,41 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // FR-23: Private messaging REST endpoints
+  if (url.pathname === '/api/messages/private') {
+    if (req.method === 'POST') {
+      try {
+        const data = await parseJsonBody(req);
+        const result = chatManager.sendPrivateMessage(db, {
+          senderSocket: null,
+          sender: { id: data.senderId || null, username: data.senderUsername },
+          recipientUsername: data.recipientUsername,
+          content: data.content
+        });
+        res.writeHead(result.success ? 201 : 400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: err.message }));
+      }
+      return;
+    } else if (req.method === 'GET') {
+      const userA = url.searchParams.get('userA');
+      const userB = url.searchParams.get('userB');
+      const history = chatManager.getPrivateHistory(db, userA, userB);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, messages: history }));
+      return;
+    }
+  }
+
+  if (url.pathname === '/api/users/online' && req.method === 'GET') {
+    const online = chatManager.getOnlineUsers();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true, onlineUsers: online }));
+    return;
+  }
+
   // Serve static files from public/
   let filePath = path.join(__dirname, '..', 'public', url.pathname === '/' ? 'index.html' : url.pathname);
   const ext = path.extname(filePath);
@@ -186,9 +221,14 @@ if (WebSocketServer) {
       try {
         const data = JSON.parse(message.toString());
 
-        if (data.type === 'join_room') {
+        if (data.type === 'auth') {
+          currentUser = data.user;
+          chatManager.registerOnlineUser(ws, currentUser);
+          ws.send(JSON.stringify({ type: 'auth_success', user: currentUser }));
+        } else if (data.type === 'join_room') {
           currentRoomId = data.roomId;
           currentUser = data.user;
+          chatManager.registerOnlineUser(ws, currentUser);
           const members = chatManager.joinRoom(currentRoomId, ws, currentUser);
           const history = chatManager.getStoredMessages(db, currentRoomId);
 
@@ -217,6 +257,23 @@ if (WebSocketServer) {
             username: currentUser.username,
             content: data.content
           });
+        } else if (data.type === 'send_private_message') {
+          // FR-23: Private one-to-one messaging
+          if (!currentUser) {
+            ws.send(JSON.stringify({ type: 'error', message: 'Must be logged in to send private messages' }));
+            return;
+          }
+
+          const res = chatManager.sendPrivateMessage(db, {
+            senderSocket: ws,
+            sender: currentUser,
+            recipientUsername: data.recipient,
+            content: data.content
+          });
+
+          if (!res.success) {
+            ws.send(JSON.stringify({ type: 'error', message: res.message }));
+          }
         } else if (data.type === 'leave_room') {
           if (currentRoomId) {
             chatManager.leaveRoom(ws, currentRoomId);
@@ -235,6 +292,7 @@ if (WebSocketServer) {
     });
 
     ws.on('close', () => {
+      chatManager.removeOnlineUser(ws);
       if (currentRoomId) {
         chatManager.leaveRoom(ws, currentRoomId);
         const members = chatManager.getRoomMembers(currentRoomId);
