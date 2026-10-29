@@ -1,0 +1,18 @@
+{
+  "name": "chat-application-socket-programming",
+  "version": "1.0.0",
+  "description": "Real-time chat application using Node.js and WebSockets with SQLite persistence",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test tests/fr02_duplicate_username.test.js"
+  },
+  "keywords": [
+    "chat",
+    "websockets",
+    "socket-programming",
+    "sqlite"
+  ],
+  "author": "Amartya Sinha, Anagha B Poojari, Anirudh Ganesh Prabhu",
+  "license": "ISC"
+}
