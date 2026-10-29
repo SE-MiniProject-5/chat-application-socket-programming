@@ -81,8 +81,9 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(result.success ? 200 : 401, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(result));
     } catch (err) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, message: err.message }));
+      // FR-20: Always display generic message on login failure
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, message: 'Invalid username or password' }));
     }
     return;
   }
