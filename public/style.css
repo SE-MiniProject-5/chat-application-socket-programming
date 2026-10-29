@@ -177,6 +177,13 @@ input:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.rooms-list li:hover {
+  background: #21262d;
+  border-color: #58a6ff;
 }
 
 .rooms-list li span.room-name {
@@ -187,6 +194,109 @@ input:focus {
 .rooms-list li span.room-date {
   color: #8b949e;
   font-size: 11px;
+}
+
+/* Chat Section Styles (FR-11) */
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #30363d;
+  margin-bottom: 14px;
+}
+
+.chat-header h3 {
+  color: #f0f6fc;
+  font-size: 16px;
+}
+
+.online-users {
+  color: #3fb950;
+  font-size: 11px;
+}
+
+.leave-btn {
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #f85149;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.leave-btn:hover {
+  background: rgba(248, 81, 73, 0.15);
+}
+
+.messages-container {
+  height: 220px;
+  overflow-y: auto;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 12px;
+  background: #0d1117;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.message-item {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.message-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+
+.message-sender {
+  font-weight: 600;
+  color: #58a6ff;
+}
+
+.message-sender.self {
+  color: #3fb950;
+}
+
+.message-time {
+  color: #8b949e;
+}
+
+.message-text {
+  color: #c9d1d9;
+}
+
+.message-form {
+  display: flex;
+  gap: 8px;
+}
+
+.message-form input {
+  flex: 1;
+}
+
+.send-btn {
+  background: #238636;
+  border: 1px solid rgba(240, 246, 252, 0.1);
+  border-radius: 6px;
+  color: #fff;
+  padding: 0 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.send-btn:hover {
+  background: #2ea043;
 }
 
 .footer {

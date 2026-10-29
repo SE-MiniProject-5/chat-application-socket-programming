@@ -4,9 +4,18 @@ const path = require('node:path');
 const { createDatabase } = require('./db');
 const { registerUser, loginUser } = require('./auth');
 const { createRoom, listRooms } = require('./rooms');
+const { ChatManager } = require('./chatManager');
+
+let WebSocketServer;
+try {
+  WebSocketServer = require('ws').WebSocketServer;
+} catch (err) {
+  // Optional ws fallback
+}
 
 const PORT = process.env.PORT || 3000;
 const db = createDatabase();
+const chatManager = new ChatManager();
 
 // Helper to parse JSON body
 function parseJsonBody(req) {
@@ -106,6 +115,43 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // FR-11: Room messages & members REST endpoints
+  const roomMessagesMatch = url.pathname.match(/^\/api\/rooms\/(\d+)\/messages$/);
+  if (roomMessagesMatch) {
+    const roomId = Number(roomMessagesMatch[1]);
+    if (req.method === 'GET') {
+      const messages = chatManager.getStoredMessages(db, roomId);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, messages }));
+      return;
+    } else if (req.method === 'POST') {
+      try {
+        const data = await parseJsonBody(req);
+        const result = chatManager.sendMessage(db, {
+          roomId,
+          userId: data.userId || null,
+          username: data.username,
+          content: data.content
+        });
+        res.writeHead(result.success ? 201 : 400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: err.message }));
+      }
+      return;
+    }
+  }
+
+  const roomMembersMatch = url.pathname.match(/^\/api\/rooms\/(\d+)\/members$/);
+  if (roomMembersMatch && req.method === 'GET') {
+    const roomId = Number(roomMembersMatch[1]);
+    const members = chatManager.getRoomMembers(roomId);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true, members }));
+    return;
+  }
+
   // Serve static files from public/
   let filePath = path.join(__dirname, '..', 'public', url.pathname === '/' ? 'index.html' : url.pathname);
   const ext = path.extname(filePath);
@@ -127,10 +173,84 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
+// WebSocket Server for Real-Time Multi-User Chat (FR-10, FR-11)
+if (WebSocketServer) {
+  const wss = new WebSocketServer({ server });
+
+  wss.on('connection', (ws) => {
+    let currentRoomId = null;
+    let currentUser = null;
+
+    ws.on('message', (message) => {
+      try {
+        const data = JSON.parse(message.toString());
+
+        if (data.type === 'join_room') {
+          currentRoomId = data.roomId;
+          currentUser = data.user;
+          const members = chatManager.joinRoom(currentRoomId, ws, currentUser);
+          const history = chatManager.getStoredMessages(db, currentRoomId);
+
+          ws.send(JSON.stringify({
+            type: 'room_joined',
+            roomId: currentRoomId,
+            members,
+            history
+          }));
+
+          // Notify everyone in the room about online members
+          chatManager.broadcastToRoom(currentRoomId, {
+            type: 'presence',
+            roomId: currentRoomId,
+            members
+          });
+        } else if (data.type === 'send_message') {
+          if (!currentRoomId || !currentUser) {
+            ws.send(JSON.stringify({ type: 'error', message: 'You must join a room first' }));
+            return;
+          }
+
+          chatManager.sendMessage(db, {
+            roomId: currentRoomId,
+            userId: currentUser.id,
+            username: currentUser.username,
+            content: data.content
+          });
+        } else if (data.type === 'leave_room') {
+          if (currentRoomId) {
+            chatManager.leaveRoom(ws, currentRoomId);
+            const members = chatManager.getRoomMembers(currentRoomId);
+            chatManager.broadcastToRoom(currentRoomId, {
+              type: 'presence',
+              roomId: currentRoomId,
+              members
+            });
+            currentRoomId = null;
+          }
+        }
+      } catch (err) {
+        ws.send(JSON.stringify({ type: 'error', message: err.message }));
+      }
+    });
+
+    ws.on('close', () => {
+      if (currentRoomId) {
+        chatManager.leaveRoom(ws, currentRoomId);
+        const members = chatManager.getRoomMembers(currentRoomId);
+        chatManager.broadcastToRoom(currentRoomId, {
+          type: 'presence',
+          roomId: currentRoomId,
+          members
+        });
+      }
+    });
+  });
+}
+
 if (require.main === module) {
   server.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}/`);
   });
 }
 
-module.exports = { server, db };
+module.exports = { server, db, chatManager };
