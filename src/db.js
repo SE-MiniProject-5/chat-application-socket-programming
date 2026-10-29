@@ -31,6 +31,18 @@ function createDatabase(dbPath = path.join(__dirname, '..', 'chat.db')) {
       FOREIGN KEY (room_id) REFERENCES rooms(id),
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
+
+    CREATE TABLE IF NOT EXISTS private_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sender_id INTEGER,
+      sender_username TEXT NOT NULL,
+      recipient_id INTEGER,
+      recipient_username TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (sender_id) REFERENCES users(id),
+      FOREIGN KEY (recipient_id) REFERENCES users(id)
+    );
   `);
 
   return db;
