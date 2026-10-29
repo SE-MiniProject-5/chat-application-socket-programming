@@ -5,7 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "test": "node --test tests/fr02_duplicate_username.test.js"
+    "test": "node --test tests/fr02_duplicate_username.test.js tests/fr05_create_room.test.js"
   },
   "keywords": [
     "chat",

@@ -149,6 +149,46 @@ input:focus {
   background: #2ea043;
 }
 
+.rooms-list-container {
+  margin-top: 24px;
+  border-top: 1px solid #30363d;
+  padding-top: 16px;
+}
+
+.rooms-list-container h3 {
+  font-size: 14px;
+  color: #f0f6fc;
+  margin-bottom: 12px;
+}
+
+.rooms-list {
+  list-style: none;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.rooms-list li {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rooms-list li span.room-name {
+  color: #58a6ff;
+  font-weight: 500;
+}
+
+.rooms-list li span.room-date {
+  color: #8b949e;
+  font-size: 11px;
+}
+
 .footer {
   margin-top: 24px;
   padding-top: 16px;

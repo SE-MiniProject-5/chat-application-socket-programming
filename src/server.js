@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { createDatabase } = require('./db');
 const { registerUser, loginUser } = require('./auth');
+const { createRoom, listRooms } = require('./rooms');
 
 const PORT = process.env.PORT || 3000;
 const db = createDatabase();
@@ -72,6 +73,34 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify(result));
     } catch (err) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, message: err.message }));
+    }
+    return;
+  }
+
+  // FR-05: Create chat room
+  if (url.pathname === '/api/rooms' && req.method === 'POST') {
+    try {
+      const data = await parseJsonBody(req);
+      const result = createRoom(db, data.name, data.created_by || null);
+
+      res.writeHead(result.success ? 201 : 400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    } catch (err) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, message: err.message }));
+    }
+    return;
+  }
+
+  // FR-06: List chat rooms
+  if (url.pathname === '/api/rooms' && req.method === 'GET') {
+    try {
+      const result = listRooms(db);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: false, message: err.message }));
     }
     return;
