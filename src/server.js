@@ -15,6 +15,11 @@ try {
 }
 
 const PORT = process.env.PORT || 3000;
+
+// FR-21: Log diagnostic details on the server; never expose them to clients.
+function logServerError(context, err) {
+  console.error(`[${context}]`, err);
+}
 const db = createDatabase();
 const chatManager = new ChatManager();
 const sessions = createSessionManager();
@@ -71,7 +76,8 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify(result));
     } catch (err) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, message: err.message }));
+      logServerError('API request failed', err);
+      res.end(JSON.stringify({ success: false, message: 'The server could not complete your request. Please try again.' }));
     }
     return;
   }
@@ -218,7 +224,8 @@ const server = http.createServer(async (req, res) => {
         res.end('404 Not Found');
       } else {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
-        res.end(`Server Error: ${err.code}`);
+        logServerError('Static file read failed', err);
+        res.end('The server could not load this resource. Please try again.');
       }
     } else {
       res.writeHead(200, { 'Content-Type': contentType });
@@ -340,7 +347,10 @@ if (WebSocketServer) {
           }
         }
       } catch (err) {
-        ws.send(JSON.stringify({ type: 'error', message: err.message }));
+        logServerError('WebSocket message handling failed', err);
+        if (ws.readyState === 1) {
+          ws.send(JSON.stringify({ type: 'error', message: 'The server could not process that action. Please try again.' }));
+        }
       }
     });
 
