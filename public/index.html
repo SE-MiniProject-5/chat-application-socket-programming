@@ -102,6 +102,7 @@
         <div>
           <h3 id="current-room-title">Room</h3>
           <small id="online-users" class="online-users">Members: -</small>
+          <small id="connection-status" class="connection-status disconnected" role="status" aria-live="polite">Disconnected</small>
         </div>
         <button class="leave-btn" onclick="leaveCurrentRoom()">Leave</button>
       </div>
@@ -116,7 +117,7 @@
           required 
           autocomplete="off"
         >
-        <button type="submit" class="send-btn">Send</button>
+        <button type="submit" class="send-btn" disabled aria-disabled="true">Send</button>
       </form>
       <small class="hint" style="margin-top: 6px;">💡 Tip (FR-23): Type <code>/w username message</code> for private 1-to-1 chat</small>
     </div>
