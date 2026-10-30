@@ -254,7 +254,32 @@ if (WebSocketServer) {
             ws.close(1008, 'Invalid session');
             return;
           }
-          currentRoomId = data.roomId;
+
+          const requestedRoomId = Number(data.roomId);
+          if (!Number.isInteger(requestedRoomId) || requestedRoomId <= 0 || !data.user || !data.user.username) {
+            ws.send(JSON.stringify({ type: 'error', message: 'A valid room and logged-in user are required to join' }));
+            return;
+          }
+
+          const room = db.prepare('SELECT id FROM rooms WHERE id = ?').get(requestedRoomId);
+          if (!room) {
+            ws.send(JSON.stringify({ type: 'error', message: 'Room not found' }));
+            return;
+          }
+
+          // FR-07: Leave the previous room before joining another one.
+          if (currentRoomId !== null && String(currentRoomId) !== String(requestedRoomId)) {
+            const previousRoomId = currentRoomId;
+            chatManager.leaveRoom(ws, previousRoomId);
+            const previousMembers = chatManager.getRoomMembers(previousRoomId);
+            chatManager.broadcastToRoom(previousRoomId, {
+              type: 'presence',
+              roomId: previousRoomId,
+              members: previousMembers
+            });
+          }
+
+          currentRoomId = requestedRoomId;
           currentUser = data.user;
           chatManager.registerOnlineUser(ws, currentUser);
           const members = chatManager.joinRoom(currentRoomId, ws, currentUser);
@@ -267,7 +292,7 @@ if (WebSocketServer) {
             history
           }));
 
-          // Notify everyone in the room about online members
+          // Notify everyone in the room about online members.
           chatManager.broadcastToRoom(currentRoomId, {
             type: 'presence',
             roomId: currentRoomId,
