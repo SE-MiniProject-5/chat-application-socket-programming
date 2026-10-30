@@ -3,17 +3,47 @@ let sessionToken = sessionStorage.getItem('chat_session_token');
 let currentRoom = null;
 let socket = null;
 
+// FR-17: Automatically retry dropped WebSocket connections and restore the previous room.
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_DELAY_MS = 1000;
+let reconnectAttempts = 0;
+let reconnectTimer = null;
+let intentionalDisconnect = false;
+
+function clearReconnectTimer() {
+  if (reconnectTimer !== null) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+}
+
+function scheduleReconnect() {
+  if (intentionalDisconnect || !sessionToken || reconnectTimer !== null) return;
+
+  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    showAlert('Connection lost. Please reload the page.', 'error');
+    return;
+  }
+
+  reconnectAttempts += 1;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    initWebSocket();
+  }, RECONNECT_DELAY_MS);
+}
+
+
 function initWebSocket() {
   if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
     return;
   }
 
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   if (!sessionToken) {
     showAlert('Please log in again before connecting to chat.', 'error');
     return;
   }
 
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const wsUrl = `${protocol}//${window.location.host}?token=${encodeURIComponent(sessionToken)}`;
 
   try {
@@ -21,6 +51,11 @@ function initWebSocket() {
 
     socket.onopen = () => {
       console.log('Connected to WebSocket server');
+      // FR-17: A successful connection resets the retry counter.
+      reconnectAttempts = 0;
+      clearReconnectTimer();
+
+      // FR-17: Rejoin the room that was active before the connection dropped.
       if (currentRoom && currentUser) {
         socket.send(JSON.stringify({
           type: 'join_room',
@@ -44,6 +79,10 @@ function initWebSocket() {
           renderMessageHistory(data.history);
         } else if (data.type === 'error') {
           showAlert(data.message, 'error');
+          // An invalid/expired session cannot be recovered by reconnecting.
+          if (data.message === 'Session expired. Please log in again.') {
+            intentionalDisconnect = true;
+          }
         }
       } catch (err) {
         console.error('Error parsing WS message:', err);
@@ -52,9 +91,17 @@ function initWebSocket() {
 
     socket.onclose = () => {
       console.log('WebSocket disconnected');
+      socket = null;
+
+      // FR-17: Unexpected disconnects are retried five times.
+      if (!intentionalDisconnect && sessionToken) {
+        scheduleReconnect();
+      }
     };
   } catch (err) {
     console.error('WebSocket connection failed:', err);
+    socket = null;
+    scheduleReconnect();
   }
 }
 
@@ -154,6 +201,9 @@ function joinRoom(room) {
 }
 
 function leaveCurrentRoom() {
+  // Leaving a room intentionally does not mean the WebSocket should reconnect.
+  clearReconnectTimer();
+  reconnectAttempts = 0;
   if (socket && socket.readyState === WebSocket.OPEN && currentRoom) {
     socket.send(JSON.stringify({ type: 'leave_room', roomId: currentRoom.id }));
   }
@@ -367,6 +417,8 @@ async function handleRegister(event) {
       showAlert(`Success! Account created for "${data.user.username}". You can now log in.`, 'success');
       currentUser = data.user;
       sessionToken = data.token;
+      intentionalDisconnect = false;
+      reconnectAttempts = 0;
       sessionStorage.setItem('chat_user', JSON.stringify(currentUser));
       sessionStorage.setItem('chat_session_token', sessionToken);
       usernameInput.value = '';
@@ -383,6 +435,9 @@ async function handleRegister(event) {
 
 
 async function handleLogout() {
+  intentionalDisconnect = true;
+  clearReconnectTimer();
+  reconnectAttempts = 0;
   const logoutButton = document.getElementById('logout-btn');
   logoutButton.disabled = true;
 
@@ -439,6 +494,8 @@ async function handleLogin(event) {
     } else {
       currentUser = data.user;
       sessionToken = data.token;
+      intentionalDisconnect = false;
+      reconnectAttempts = 0;
       sessionStorage.setItem('chat_user', JSON.stringify(currentUser));
       sessionStorage.setItem('chat_session_token', sessionToken);
       showAlert(`Welcome back, ${data.user.username}!`, 'success');
