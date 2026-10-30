@@ -161,11 +161,13 @@ function leaveCurrentRoom() {
   switchTab('rooms');
 }
 
+// FR-14: render the server-provided usernames for the currently joined room.
 function updateOnlineMembers(members) {
   const el = document.getElementById('online-users');
   if (!el) return;
-  const list = members && members.length > 0 ? members.join(', ') : 'None';
-  el.textContent = `Online (${members.length}): ${list}`;
+  const safeMembers = Array.isArray(members) ? [...new Set(members.map(String))].sort((a, b) => a.localeCompare(b)) : [];
+  const list = safeMembers.length > 0 ? safeMembers.join(', ') : 'None';
+  el.textContent = `Online (${safeMembers.length}): ${list}`;
 }
 
 function renderMessageHistory(history) {

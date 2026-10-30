@@ -306,6 +306,21 @@ class ChatManager {
   }
 
   /**
+   * FR-14: Broadcast the current usernames in a room to every active member.
+   * Keeping this in ChatManager ensures join/leave/disconnect presence updates
+   * always use the same payload shape.
+   */
+  broadcastPresence(roomId) {
+    const members = this.getRoomMembers(roomId);
+    this.broadcastToRoom(roomId, {
+      type: 'presence',
+      roomId: Number(roomId),
+      members
+    });
+    return members;
+  }
+
+  /**
    * Broadcasts a JSON message to all active sockets in the room
    */
   broadcastToRoom(roomId, payload) {

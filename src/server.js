@@ -369,12 +369,8 @@ if (WebSocketServer) {
           if (currentRoomId !== null && String(currentRoomId) !== String(requestedRoomId)) {
             const previousRoomId = currentRoomId;
             chatManager.leaveRoom(ws, previousRoomId);
-            const previousMembers = chatManager.getRoomMembers(previousRoomId);
-            chatManager.broadcastToRoom(previousRoomId, {
-              type: 'presence',
-              roomId: previousRoomId,
-              members: previousMembers
-            });
+            // FR-14: refresh the previous room's online-user list after a move.
+            chatManager.broadcastPresence(previousRoomId);
           }
 
           currentRoomId = requestedRoomId;
@@ -388,11 +384,8 @@ if (WebSocketServer) {
             history
           }));
 
-          chatManager.broadcastToRoom(currentRoomId, {
-            type: 'presence',
-            roomId: currentRoomId,
-            members
-          });
+          // FR-14: every join refreshes the joined room's online-user list.
+          chatManager.broadcastPresence(currentRoomId);
         } else if (data.type === 'send_message') {
           // SEC-REQ-04: a socket can send only after joining its current room.
           if (!currentRoomId) {
@@ -427,12 +420,8 @@ if (WebSocketServer) {
           if (currentRoomId !== null) {
             const roomId = currentRoomId;
             chatManager.leaveRoom(ws, roomId);
-            const members = chatManager.getRoomMembers(roomId);
-            chatManager.broadcastToRoom(roomId, {
-              type: 'presence',
-              roomId,
-              members
-            });
+            // FR-14: leaving refreshes the list for remaining members.
+            chatManager.broadcastPresence(roomId);
             currentRoomId = null;
             // Keep the socket registered as online after leaving a room.
             chatManager.registerOnlineUser(ws, currentUser);
@@ -451,12 +440,8 @@ if (WebSocketServer) {
       if (currentRoomId !== null) {
         const roomId = currentRoomId;
         chatManager.leaveRoom(ws, roomId);
-        const members = chatManager.getRoomMembers(roomId);
-        chatManager.broadcastToRoom(roomId, {
-          type: 'presence',
-          roomId,
-          members
-        });
+        // FR-14: disconnects refresh the list for remaining members.
+        chatManager.broadcastPresence(roomId);
       }
     });
   });
