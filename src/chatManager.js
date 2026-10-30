@@ -72,7 +72,16 @@ class ChatManager {
    * Allows two or more users to join the same room simultaneously.
    */
   joinRoom(roomId, clientSocket, user) {
+    if (!clientSocket || !user || !user.username) {
+      throw new Error('A connected socket and authenticated user are required');
+    }
+
     const rId = String(roomId);
+
+    // FR-07: A socket can belong to at most one room at a time.
+    // Remove any previous membership before adding the new one.
+    this.leaveRoom(clientSocket);
+
     if (!this.rooms.has(rId)) {
       this.rooms.set(rId, new Map());
     }
