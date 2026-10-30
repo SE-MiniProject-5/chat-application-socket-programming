@@ -206,7 +206,14 @@ async function handleSendMessage(event) {
   const input = document.getElementById('message-input');
   const rawContent = input.value.trim();
 
-  if (!rawContent) return;
+  if (!rawContent) {
+    showAlert('Message cannot be empty or whitespace-only.', 'error');
+    return;
+  }
+  if (rawContent.length > 500) {
+    showAlert('Message must be between 1 and 500 characters.', 'error');
+    return;
+  }
 
   // FR-23: Detect private whisper command (/w <username> <message> or /dm <username> <message>)
   const dmMatch = rawContent.match(/^\/(?:w|dm)\s+([A-Za-z0-9_]+)\s+(.+)$/i);
