@@ -45,6 +45,15 @@ function createDatabase(dbPath = path.join(__dirname, '..', 'chat.db')) {
     );
   `);
 
+  // NR-06: Provide a ready-to-use default room for first-time users.
+  // Keep unit-test databases isolated so existing room-management tests remain deterministic.
+  if (dbPath !== ':memory:') {
+    const room = db.prepare('SELECT id FROM rooms WHERE LOWER(name) = LOWER(?)').get('General');
+    if (!room) {
+      db.prepare('INSERT INTO rooms (name, created_by) VALUES (?, NULL)').run('General');
+    }
+  }
+
   return db;
 }
 

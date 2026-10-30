@@ -25,6 +25,17 @@
     <!-- Alert Message Box -->
     <div id="alert-box" class="alert hidden" role="alert"></div>
 
+    <!-- NR-06: First-use quick-start guidance -->
+    <div id="quick-start" class="quick-start" aria-label="Quick start guide">
+      <strong>Quick start — 3 easy steps</strong>
+      <ol>
+        <li><b>Create an account</b> with a username and password.</li>
+        <li><b>Join a room</b> — the ready-to-use <b># General</b> room is available.</li>
+        <li><b>Send a message</b> — type in the box and press <b>Send</b>.</li>
+      </ol>
+      <small>No setup or command knowledge is required.</small>
+    </div>
+
     <!-- Registration Form -->
     <form id="register-form" onsubmit="handleRegister(event)">
       <div class="form-group">
@@ -91,7 +102,7 @@
       </form>
 
       <div class="rooms-list-container">
-        <h3>Available Rooms (Click to Join)</h3>
+        <h3>Choose a room to start chatting</h3>
         <ul id="rooms-list" class="rooms-list"></ul>
       </div>
     </div>
@@ -106,7 +117,8 @@
         <button class="leave-btn" onclick="leaveCurrentRoom()">Leave</button>
       </div>
 
-      <div id="messages-container" class="messages-container"></div>
+      <div id="messages-container" class="messages-container" aria-live="polite"></div>
+      <small id="chat-first-message-hint" class="chat-first-message-hint">Type your first message below and press Send.</small>
 
       <form id="message-form" class="message-form" onsubmit="handleSendMessage(event)">
         <input 
