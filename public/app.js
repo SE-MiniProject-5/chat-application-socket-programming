@@ -2,11 +2,45 @@ let currentUser = JSON.parse(sessionStorage.getItem('chat_user') || 'null');
 let sessionToken = sessionStorage.getItem('chat_session_token');
 let currentRoom = null;
 let socket = null;
+let reconnectTimer = null;
+let reconnectAttempts = 0;
+let isLoggingOut = false;
+const MAX_RECONNECT_DELAY = 10000;
+
+function updateConnectionState(state) {
+  const status = document.getElementById('connection-status');
+  const sendButton = document.querySelector('#message-form button[type="submit"]');
+  if (status) {
+    status.textContent = state;
+    status.className = `connection-status ${state.toLowerCase()}`;
+    status.setAttribute('aria-label', `Connection status: ${state}`);
+  }
+  if (sendButton) {
+    sendButton.disabled = state !== 'Connected';
+    sendButton.setAttribute('aria-disabled', String(sendButton.disabled));
+  }
+}
+
+function scheduleReconnect() {
+  if (!currentUser || isLoggingOut || reconnectTimer) return;
+  updateConnectionState('Reconnecting');
+  const delay = Math.min(1000 * (2 ** reconnectAttempts), MAX_RECONNECT_DELAY);
+  reconnectAttempts += 1;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    initWebSocket();
+  }, delay);
+}
 
 function initWebSocket() {
+  if (!currentUser || isLoggingOut) {
+    updateConnectionState('Disconnected');
+    return;
+  }
   if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
     return;
   }
+  updateConnectionState(reconnectAttempts > 0 ? 'Reconnecting' : 'Disconnected');
 
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const wsUrl = `${protocol}//${window.location.host}`;
@@ -15,6 +49,8 @@ function initWebSocket() {
     socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
+      reconnectAttempts = 0;
+      updateConnectionState('Connected');
       console.log('Connected to WebSocket server');
       if (currentRoom && currentUser) {
         socket.send(JSON.stringify({
@@ -47,11 +83,20 @@ function initWebSocket() {
       }
     };
 
+    socket.onerror = () => {
+      updateConnectionState('Reconnecting');
+    };
+
     socket.onclose = () => {
       console.log('WebSocket disconnected');
+      socket = null;
+      updateConnectionState('Disconnected');
+      if (currentUser && !isLoggingOut) scheduleReconnect();
     };
   } catch (err) {
     console.error('WebSocket connection failed:', err);
+    updateConnectionState('Disconnected');
+    scheduleReconnect();
   }
 }
 
@@ -207,6 +252,11 @@ async function handleSendMessage(event) {
   const rawContent = input.value.trim();
 
   if (!rawContent) return;
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    updateConnectionState('Disconnected');
+    showAlert('You are disconnected. Reconnect before sending messages.', 'error');
+    return;
+  }
 
   // FR-23: Detect private whisper command (/w <username> <message> or /dm <username> <message>)
   const dmMatch = rawContent.match(/^\/(?:w|dm)\s+([A-Za-z0-9_]+)\s+(.+)$/i);
@@ -381,6 +431,11 @@ async function handleLogout() {
     console.error('Logout request failed:', error);
   } finally {
     // Always clear this browser's local session and disconnect its socket.
+    isLoggingOut = true;
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
     if (socket) {
       if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
         socket.close(1000, 'Logged out');
@@ -390,6 +445,9 @@ async function handleLogout() {
 
     currentRoom = null;
     currentUser = null;
+    reconnectAttempts = 0;
+    isLoggingOut = false;
+    updateConnectionState('Disconnected');
     sessionToken = null;
     sessionStorage.removeItem('chat_user');
     sessionStorage.removeItem('chat_session_token');
@@ -424,7 +482,9 @@ async function handleLogin(event) {
       sessionToken = data.token;
       sessionStorage.setItem('chat_user', JSON.stringify(currentUser));
       sessionStorage.setItem('chat_session_token', sessionToken);
+      isLoggingOut = false;
       showAlert(`Welcome back, ${data.user.username}!`, 'success');
+      initWebSocket();
       setTimeout(() => switchTab('rooms'), 600);
     }
   } catch (error) {
