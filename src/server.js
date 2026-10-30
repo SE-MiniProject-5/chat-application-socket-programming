@@ -193,9 +193,16 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST') {
       try {
         const data = await parseJsonBody(req);
+        const token = (req.headers.authorization || '').replace(/^Bearer\\s+/i, '') || data.token;
+        const authenticatedUser = resolveSessionUser(db, sessions, token);
+        if (!authenticatedUser) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'Authentication required' }));
+          return;
+        }
         const result = chatManager.sendPrivateMessage(db, {
           senderSocket: null,
-          sender: { id: data.senderId || null, username: data.senderUsername },
+          sender: authenticatedUser,
           recipientUsername: data.recipientUsername,
           content: data.content
         });
