@@ -304,12 +304,18 @@ if (WebSocketServer) {
             return;
           }
 
-          chatManager.sendMessage(db, {
+          const result = chatManager.sendMessage(db, {
             roomId: currentRoomId,
             userId: currentUser.id,
             username: currentUser.username,
             content: data.content
           });
+
+          // FR-19: Invalid messages are rejected and the error is sent only to
+          // the originating socket. No room broadcast occurs on failure.
+          if (!result.success) {
+            ws.send(JSON.stringify({ type: 'error', message: result.message }));
+          }
         } else if (data.type === 'send_private_message') {
           // FR-23: Private one-to-one messaging
           if (!currentUser) {
