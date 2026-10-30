@@ -299,17 +299,20 @@ if (WebSocketServer) {
             members
           });
         } else if (data.type === 'send_message') {
-          if (!currentRoomId || !currentUser) {
-            ws.send(JSON.stringify({ type: 'error', message: 'You must join a room first' }));
+          if (!currentRoomId || !currentUser || !chatManager.isSocketInRoom(currentRoomId, ws)) {
+            ws.send(JSON.stringify({ type: 'error', message: 'You must join the target room before sending messages' }));
             return;
           }
 
-          chatManager.sendMessage(db, {
+          const result = chatManager.sendMessage(db, {
             roomId: currentRoomId,
             userId: currentUser.id,
             username: currentUser.username,
             content: data.content
           });
+          if (!result.success) {
+            ws.send(JSON.stringify({ type: 'error', message: result.message }));
+          }
         } else if (data.type === 'send_private_message') {
           // FR-23: Private one-to-one messaging
           if (!currentUser) {
