@@ -5,6 +5,7 @@ const { createDatabase } = require('./db');
 const { registerUser, loginUser } = require('./auth');
 const { createRoom, listRooms } = require('./rooms');
 const { ChatManager } = require('./chatManager');
+const { createSessionManager } = require('./sessionManager');
 
 let WebSocketServer;
 try {
@@ -16,6 +17,7 @@ try {
 const PORT = process.env.PORT || 3000;
 const db = createDatabase();
 const chatManager = new ChatManager();
+const sessions = createSessionManager();
 
 // Helper to parse JSON body
 function parseJsonBody(req) {
@@ -63,6 +65,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const data = await parseJsonBody(req);
       const result = registerUser(db, data.username, data.password);
+      if (result.success) result.token = sessions.create(result.user.id);
 
       res.writeHead(result.success ? 201 : 400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(result));
@@ -77,6 +80,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const data = await parseJsonBody(req);
       const result = loginUser(db, data.username, data.password);
+      if (result.success) result.token = sessions.create(result.user.id);
 
       res.writeHead(result.success ? 200 : 401, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(result));
@@ -84,6 +88,20 @@ const server = http.createServer(async (req, res) => {
       // FR-20: Always display generic message on login failure
       res.writeHead(401, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: false, message: 'Invalid username or password' }));
+    }
+    return;
+  }
+
+  // FR-04: Invalidate the server-side session and close its WebSocket connections.
+  if (url.pathname === '/api/logout' && req.method === 'POST') {
+    try {
+      const data = await parseJsonBody(req);
+      const invalidated = sessions.invalidate(data.token);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, invalidated }));
+    } catch (err) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, message: 'Invalid logout request' }));
     }
     return;
   }
@@ -223,9 +241,19 @@ if (WebSocketServer) {
 
         if (data.type === 'auth') {
           currentUser = data.user;
+          if (data.token && !sessions.attachSocket(data.token, currentUser.id, ws)) {
+            ws.send(JSON.stringify({ type: 'error', message: 'Session expired. Please log in again.' }));
+            ws.close(1008, 'Invalid session');
+            return;
+          }
           chatManager.registerOnlineUser(ws, currentUser);
           ws.send(JSON.stringify({ type: 'auth_success', user: currentUser }));
         } else if (data.type === 'join_room') {
+          if (data.token && !sessions.attachSocket(data.token, data.user && data.user.id, ws)) {
+            ws.send(JSON.stringify({ type: 'error', message: 'Session expired. Please log in again.' }));
+            ws.close(1008, 'Invalid session');
+            return;
+          }
           currentRoomId = data.roomId;
           currentUser = data.user;
           chatManager.registerOnlineUser(ws, currentUser);
@@ -292,6 +320,7 @@ if (WebSocketServer) {
     });
 
     ws.on('close', () => {
+      sessions.detachSocket(ws);
       chatManager.removeOnlineUser(ws);
       if (currentRoomId) {
         chatManager.leaveRoom(ws, currentRoomId);
@@ -312,4 +341,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, db, chatManager };
+module.exports = { server, db, chatManager, sessions };

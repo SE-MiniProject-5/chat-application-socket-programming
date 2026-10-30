@@ -1,4 +1,5 @@
 let currentUser = JSON.parse(sessionStorage.getItem('chat_user') || 'null');
+let sessionToken = sessionStorage.getItem('chat_session_token');
 let currentRoom = null;
 let socket = null;
 
@@ -19,7 +20,8 @@ function initWebSocket() {
         socket.send(JSON.stringify({
           type: 'join_room',
           roomId: currentRoom.id,
-          user: currentUser
+          user: currentUser,
+          token: sessionToken
         }));
       }
     };
@@ -72,6 +74,8 @@ function switchTab(tab) {
   regTab.classList.remove('active');
   loginTab.classList.remove('active');
   roomsTab.classList.remove('active');
+
+  document.getElementById('logout-btn').classList.toggle('hidden', !currentUser || tab === 'register' || tab === 'login');
 
   if (tab === 'register') {
     regForm.classList.remove('hidden');
@@ -134,7 +138,8 @@ function joinRoom(room) {
     socket.send(JSON.stringify({
       type: 'join_room',
       roomId: room.id,
-      user: currentUser
+      user: currentUser,
+      token: sessionToken
     }));
   }
 }
@@ -344,7 +349,9 @@ async function handleRegister(event) {
     } else {
       showAlert(`Success! Account created for "${data.user.username}". You can now log in.`, 'success');
       currentUser = data.user;
+      sessionToken = data.token;
       sessionStorage.setItem('chat_user', JSON.stringify(currentUser));
+      sessionStorage.setItem('chat_session_token', sessionToken);
       usernameInput.value = '';
       passwordInput.value = '';
       setTimeout(() => switchTab('rooms'), 800);
@@ -354,6 +361,43 @@ async function handleRegister(event) {
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = 'Create Account';
+  }
+}
+
+
+async function handleLogout() {
+  const logoutButton = document.getElementById('logout-btn');
+  logoutButton.disabled = true;
+
+  try {
+    if (sessionToken) {
+      await fetch('/api/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: sessionToken })
+      });
+    }
+  } catch (error) {
+    console.error('Logout request failed:', error);
+  } finally {
+    // Always clear this browser's local session and disconnect its socket.
+    if (socket) {
+      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+        socket.close(1000, 'Logged out');
+      }
+      socket = null;
+    }
+
+    currentRoom = null;
+    currentUser = null;
+    sessionToken = null;
+    sessionStorage.removeItem('chat_user');
+    sessionStorage.removeItem('chat_session_token');
+
+    document.getElementById('login-form').reset();
+    switchTab('login');
+    showAlert('You have been logged out successfully.', 'success');
+    logoutButton.disabled = false;
   }
 }
 
@@ -377,7 +421,9 @@ async function handleLogin(event) {
       showAlert(data.message || 'Invalid username or password', 'error');
     } else {
       currentUser = data.user;
+      sessionToken = data.token;
       sessionStorage.setItem('chat_user', JSON.stringify(currentUser));
+      sessionStorage.setItem('chat_session_token', sessionToken);
       showAlert(`Welcome back, ${data.user.username}!`, 'success');
       setTimeout(() => switchTab('rooms'), 600);
     }
