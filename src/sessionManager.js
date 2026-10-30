@@ -15,6 +15,13 @@ function createSessionManager() {
     return Boolean(session && session.userId === userId);
   }
 
+  // Resolve identity from the opaque server-issued token, never from client data.
+  function getUserId(token) {
+    if (typeof token !== 'string') return null;
+    const session = sessions.get(token);
+    return session ? session.userId : null;
+  }
+
   function attachSocket(token, userId, socket) {
     if (!verify(token, userId)) return false;
     const session = sessions.get(token);
@@ -45,7 +52,7 @@ function createSessionManager() {
     return true;
   }
 
-  return { create, verify, attachSocket, detachSocket, invalidate };
+  return { create, verify, getUserId, attachSocket, detachSocket, invalidate };
 }
 
 module.exports = { createSessionManager };
