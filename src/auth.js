@@ -13,7 +13,7 @@ function hashPassword(password) {
  */
 function verifyPassword(password, stored) {
   if (typeof stored !== 'string') return false;
-  if (/^\\$2[aby]\\$/.test(stored)) {
+  if (/^\$2[aby]\$/.test(stored)) {
     return bcrypt.compareSync(password, stored);
   }
 
@@ -127,7 +127,7 @@ function loginUser(db, username, password) {
     return { success: false, message: 'Invalid username or password' };
   }
 
-  if (!/^\\$2[aby]\\$/.test(user.password_hash)) {
+  if (!/^\$2[aby]\$/.test(user.password_hash)) {
     db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(password), user.id);
   }
 
