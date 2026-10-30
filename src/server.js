@@ -15,6 +15,7 @@ try {
 }
 
 const PORT = process.env.PORT || 3000;
+const SAFE_SERVER_ERROR = 'The server could not complete your request. Please try again.';
 
 // FR-21: Log diagnostic details on the server; never expose them to clients.
 function logServerError(context, err) {
@@ -77,7 +78,7 @@ const server = http.createServer(async (req, res) => {
     } catch (err) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       logServerError('API request failed', err);
-      res.end(JSON.stringify({ success: false, message: 'The server could not complete your request. Please try again.' }));
+      res.end(JSON.stringify({ success: false, message: SAFE_SERVER_ERROR }));
     }
     return;
   }
@@ -122,7 +123,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify(result));
     } catch (err) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, message: err.message }));
+      res.end(JSON.stringify({ success: false, message: SAFE_SERVER_ERROR }));
     }
     return;
   }
@@ -135,7 +136,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify(result));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, message: err.message }));
+      res.end(JSON.stringify({ success: false, message: SAFE_SERVER_ERROR }));
     }
     return;
   }
@@ -162,7 +163,7 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify(result));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, message: err.message }));
+        res.end(JSON.stringify({ success: false, message: SAFE_SERVER_ERROR }));
       }
       return;
     }
@@ -192,7 +193,7 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify(result));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, message: err.message }));
+        res.end(JSON.stringify({ success: false, message: SAFE_SERVER_ERROR }));
       }
       return;
     } else if (req.method === 'GET') {
@@ -225,7 +226,7 @@ const server = http.createServer(async (req, res) => {
       } else {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
         logServerError('Static file read failed', err);
-        res.end('The server could not load this resource. Please try again.');
+        res.end(SAFE_SERVER_ERROR);
       }
     } else {
       res.writeHead(200, { 'Content-Type': contentType });
@@ -376,4 +377,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, db, chatManager, sessions };
+module.exports = { server, db, chatManager, sessions, SAFE_SERVER_ERROR };
