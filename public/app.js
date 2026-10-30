@@ -162,6 +162,7 @@ function updateOnlineMembers(members) {
 function renderMessageHistory(history) {
   const container = document.getElementById('messages-container');
   container.innerHTML = '';
+  renderedMessageKeys.clear();
   if (history && history.length > 0) {
     history.forEach(appendMessage);
   }
@@ -169,10 +170,30 @@ function renderMessageHistory(history) {
 
 // FR-11: Displays sender username with every message
 // FR-23: Displays private message badge and recipient details
+// NR-03: every message is shown exactly once, in server-received order.
+// Key = kind + server id (room messages and private messages have separate id spaces).
+const renderedMessageKeys = new Set();
+
+function messageKey(msg) {
+  const id = msg.id !== null && msg.id !== undefined ? msg.id : msg.seq;
+  if (id === null || id === undefined) return null;
+  return `${msg.isPrivate ? 'pm' : 'room'}:${id}`;
+}
+
 function appendMessage(msg) {
   const container = document.getElementById('messages-container');
+
+  // NR-03: drop duplicates (e.g. REST response + WebSocket broadcast, or history + live overlap)
+  const key = messageKey(msg);
+  if (key) {
+    if (renderedMessageKeys.has(key)) return;
+    renderedMessageKeys.add(key);
+  }
+
   const item = document.createElement('div');
   item.className = `message-item ${msg.isPrivate ? 'private' : ''}`;
+  if (msg.seq !== null && msg.seq !== undefined) item.dataset.seq = String(msg.seq);
+  if (key) item.dataset.key = key;
 
   const isSelf = currentUser && (msg.sender === currentUser.username || msg.userId === currentUser.id);
   const privateBadge = msg.isPrivate 
