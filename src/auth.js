@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const { validateUsername, validatePassword } = require('./validation');
 
 const BCRYPT_COST = 10;
 
@@ -32,26 +33,11 @@ function verifyPassword(password, storedHash) {
  * Password: 8 to 64 chars and within bcrypt's 72-byte input limit
  */
 function validateRegistrationInput(username, password) {
-  if (typeof username !== 'string' || typeof password !== 'string') {
-    return { valid: false, message: 'Invalid input types' };
-  }
+  const usernameValidation = validateUsername(username);
+  if (!usernameValidation.valid) return usernameValidation;
 
-  const cleanUsername = username.trim();
-  const usernameRegex = /^[A-Za-z0-9_]{3,20}$/;
-
-  if (!usernameRegex.test(cleanUsername)) {
-    return {
-      valid: false,
-      message: 'Username must be 3-20 characters long and contain only letters, numbers, and underscores'
-    };
-  }
-
-  if (password.length < 8 || password.length > 64) {
-    return {
-      valid: false,
-      message: 'Password must be between 8 and 64 characters long'
-    };
-  }
+  const passwordValidation = validatePassword(password);
+  if (!passwordValidation.valid) return passwordValidation;
 
   if (bcrypt.truncates(password)) {
     return {
@@ -60,7 +46,7 @@ function validateRegistrationInput(username, password) {
     };
   }
 
-  return { valid: true, cleanUsername };
+  return { valid: true, cleanUsername: usernameValidation.cleanUsername };
 }
 
 function registerUser(db, username, password) {
@@ -92,14 +78,13 @@ function registerUser(db, username, password) {
 }
 
 function loginUser(db, username, password) {
-  if (typeof username !== 'string' || typeof password !== 'string') {
+  const usernameValidation = validateUsername(username);
+  const passwordValidation = validatePassword(password);
+  if (!usernameValidation.valid || !passwordValidation.valid) {
     return { success: false, message: 'Invalid username or password' };
   }
 
-  const cleanUsername = username.trim();
-  if (cleanUsername.length === 0 || password.length === 0) {
-    return { success: false, message: 'Invalid username or password' };
-  }
+  const cleanUsername = usernameValidation.cleanUsername;
 
   const stmt = db.prepare('SELECT id, username, password_hash FROM users WHERE LOWER(username) = LOWER(?)');
   const user = stmt.get(cleanUsername);

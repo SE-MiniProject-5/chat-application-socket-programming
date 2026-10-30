@@ -112,7 +112,15 @@ async function fetchRooms() {
     if (data.rooms && data.rooms.length > 0) {
       data.rooms.forEach(room => {
         const li = document.createElement('li');
-        li.innerHTML = `<span class="room-name"># ${room.name}</span> <span class="room-date">Click to enter</span>`;
+        const roomName = document.createElement('span');
+        roomName.className = 'room-name';
+        roomName.textContent = `# ${room.name || ''}`;
+
+        const roomDate = document.createElement('span');
+        roomDate.className = 'room-date';
+        roomDate.textContent = 'Click to enter';
+
+        li.append(roomName, roomDate);
         li.onclick = () => joinRoom(room);
         list.appendChild(li);
       });
@@ -176,30 +184,36 @@ function appendMessage(msg) {
   item.className = `message-item ${msg.isPrivate ? 'private' : ''}`;
 
   const isSelf = currentUser && (msg.sender === currentUser.username || msg.userId === currentUser.id);
-  const privateBadge = msg.isPrivate 
-    ? `<span class="badge-private">🔒 Private ${isSelf ? `to @${escapeHtml(msg.recipient)}` : `from @${escapeHtml(msg.sender)}`}</span>` 
-    : '';
 
-  item.innerHTML = `
-    <div class="message-meta">
-      <span class="message-sender ${isSelf ? 'self' : ''}">${escapeHtml(msg.sender)}</span>
-      ${privateBadge}
-      <span class="message-time">${msg.timestamp || ''}</span>
-    </div>
-    <div class="message-text">${escapeHtml(msg.content)}</div>
-  `;
+  // SR-05 / SEC-REQ-05: never insert user-controlled text through innerHTML.
+  // textContent renders HTML/script input as literal text.
+  const meta = document.createElement('div');
+  meta.className = 'message-meta';
 
+  const sender = document.createElement('span');
+  sender.className = `message-sender ${isSelf ? 'self' : ''}`;
+  sender.textContent = String(msg.sender || '');
+  meta.appendChild(sender);
+
+  if (msg.isPrivate) {
+    const badge = document.createElement('span');
+    badge.className = 'badge-private';
+    badge.textContent = `🔒 Private ${isSelf ? `to @${String(msg.recipient || '')}` : `from @${String(msg.sender || '')}`}`;
+    meta.appendChild(badge);
+  }
+
+  const time = document.createElement('span');
+  time.className = 'message-time';
+  time.textContent = String(msg.timestamp || '');
+  meta.appendChild(time);
+
+  const text = document.createElement('div');
+  text.className = 'message-text';
+  text.textContent = String(msg.content || '');
+
+  item.append(meta, text);
   container.appendChild(item);
   container.scrollTop = container.scrollHeight;
-}
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 async function handleSendMessage(event) {
