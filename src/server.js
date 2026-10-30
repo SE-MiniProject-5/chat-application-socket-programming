@@ -19,6 +19,16 @@ const db = createDatabase();
 const chatManager = new ChatManager();
 const sessions = createSessionManager();
 
+/**
+ * Resolve a session token to the canonical user record.
+ * Client-supplied usernames and user IDs are deliberately ignored.
+ */
+function resolveSessionUser(database, sessionManager, token) {
+  const userId = sessionManager.getUserId(token);
+  if (!userId) return null;
+  return database.prepare('SELECT id, username FROM users WHERE id = ?').get(userId) || null;
+}
+
 // Helper to parse JSON body
 function parseJsonBody(req) {
   return new Promise((resolve, reject) => {
@@ -146,10 +156,17 @@ const server = http.createServer(async (req, res) => {
     } else if (req.method === 'POST') {
       try {
         const data = await parseJsonBody(req);
+        const token = (req.headers.authorization || '').replace(/^Bearer\\s+/i, '') || data.token;
+        const authenticatedUser = resolveSessionUser(db, sessions, token);
+        if (!authenticatedUser) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'Authentication required' }));
+          return;
+        }
         const result = chatManager.sendMessage(db, {
           roomId,
-          userId: data.userId || null,
-          username: data.username,
+          userId: authenticatedUser.id,
+          username: authenticatedUser.username,
           content: data.content
         });
         res.writeHead(result.success ? 201 : 400, { 'Content-Type': 'application/json' });
@@ -240,23 +257,25 @@ if (WebSocketServer) {
         const data = JSON.parse(message.toString());
 
         if (data.type === 'auth') {
-          currentUser = data.user;
-          if (data.token && !sessions.attachSocket(data.token, currentUser.id, ws)) {
+          const authenticatedUser = resolveSessionUser(db, sessions, data.token);
+          if (!authenticatedUser || !sessions.attachSocket(data.token, authenticatedUser.id, ws)) {
             ws.send(JSON.stringify({ type: 'error', message: 'Session expired. Please log in again.' }));
             ws.close(1008, 'Invalid session');
             return;
           }
+          currentUser = authenticatedUser;
           chatManager.registerOnlineUser(ws, currentUser);
           ws.send(JSON.stringify({ type: 'auth_success', user: currentUser }));
         } else if (data.type === 'join_room') {
-          if (data.token && !sessions.attachSocket(data.token, data.user && data.user.id, ws)) {
+          const authenticatedUser = resolveSessionUser(db, sessions, data.token);
+          if (!authenticatedUser || !sessions.attachSocket(data.token, authenticatedUser.id, ws)) {
             ws.send(JSON.stringify({ type: 'error', message: 'Session expired. Please log in again.' }));
             ws.close(1008, 'Invalid session');
             return;
           }
 
           const requestedRoomId = Number(data.roomId);
-          if (!Number.isInteger(requestedRoomId) || requestedRoomId <= 0 || !data.user || !data.user.username) {
+          if (!Number.isInteger(requestedRoomId) || requestedRoomId <= 0) {
             ws.send(JSON.stringify({ type: 'error', message: 'A valid room and logged-in user are required to join' }));
             return;
           }
@@ -280,7 +299,7 @@ if (WebSocketServer) {
           }
 
           currentRoomId = requestedRoomId;
-          currentUser = data.user;
+          currentUser = authenticatedUser;
           chatManager.registerOnlineUser(ws, currentUser);
           const members = chatManager.joinRoom(currentRoomId, ws, currentUser);
           const history = chatManager.getStoredMessages(db, currentRoomId);
@@ -366,4 +385,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, db, chatManager, sessions };
+module.exports = { server, db, chatManager, sessions, resolveSessionUser };
