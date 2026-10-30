@@ -227,8 +227,7 @@ async function handleSendMessage(event) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            senderId: currentUser ? currentUser.id : null,
-            senderUsername: currentUser ? currentUser.username : 'Anonymous',
+            token: sessionToken,
             recipientUsername: recipient,
             content: dmContent
           })
@@ -267,8 +266,7 @@ async function handleSendMessage(event) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: currentUser ? currentUser.id : null,
-          username: currentUser ? currentUser.username : 'Anonymous',
+          token: sessionToken,
           content: rawContent
         })
       });
