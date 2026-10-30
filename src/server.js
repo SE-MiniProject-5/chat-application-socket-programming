@@ -15,7 +15,7 @@ try {
 }
 
 const PORT = process.env.PORT || 3000;
-const db = createDatabase();
+const db = createDatabase(process.env.NODE_ENV === 'test' ? ':memory:' : undefined);
 const chatManager = new ChatManager();
 const sessions = createSessionManager();
 
@@ -23,8 +23,13 @@ const sessions = createSessionManager();
 function parseJsonBody(req) {
   return new Promise((resolve, reject) => {
     let body = '';
+    const MAX_BODY_BYTES = 64 * 1024;
     req.on('data', chunk => {
       body += chunk.toString();
+      if (Buffer.byteLength(body, 'utf8') > MAX_BODY_BYTES) {
+        reject(new Error('Request body too large'));
+        req.destroy();
+      }
     });
     req.on('end', () => {
       try {
@@ -45,6 +50,20 @@ const MIME_TYPES = {
   '.json': 'application/json',
   '.png': 'image/png'
 };
+
+function getRequestToken(req, body = {}) {
+  const authorization = req.headers.authorization;
+  if (typeof authorization === 'string' && authorization.startsWith('Bearer ')) {
+    return authorization.slice(7).trim();
+  }
+  return typeof body.token === 'string' ? body.token : null;
+}
+
+function getAuthenticatedUser(token) {
+  const userId = sessions.getUserId(token);
+  if (!userId) return null;
+  return db.prepare('SELECT id, username FROM users WHERE id = ?').get(userId) || null;
+}
 
 const server = http.createServer(async (req, res) => {
   // Enable CORS
@@ -110,7 +129,13 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/rooms' && req.method === 'POST') {
     try {
       const data = await parseJsonBody(req);
-      const result = createRoom(db, data.name, data.created_by || null);
+      const user = getAuthenticatedUser(getRequestToken(req, data));
+      if (!user) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: 'Authentication required' }));
+        return;
+      }
+      const result = createRoom(db, data.name, user.id);
 
       res.writeHead(result.success ? 201 : 400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(result));
@@ -146,10 +171,26 @@ const server = http.createServer(async (req, res) => {
     } else if (req.method === 'POST') {
       try {
         const data = await parseJsonBody(req);
+        const user = getAuthenticatedUser(getRequestToken(req, data));
+        if (!user) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'Authentication required' }));
+          return;
+        }
+
+        // SEC-REQ-04: HTTP fallback is allowed only for a user currently in the room.
+        const members = chatManager.getRoomMembers(roomId);
+        if (!members.some(name => name.toLowerCase() === user.username.toLowerCase())) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'Join the room before sending messages' }));
+          return;
+        }
+
+        // SEC-REQ-03: sender identity comes from the authenticated session.
         const result = chatManager.sendMessage(db, {
           roomId,
-          userId: data.userId || null,
-          username: data.username,
+          userId: user.id,
+          username: user.username,
           content: data.content
         });
         res.writeHead(result.success ? 201 : 400, { 'Content-Type': 'application/json' });
@@ -176,9 +217,17 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST') {
       try {
         const data = await parseJsonBody(req);
+        const user = getAuthenticatedUser(getRequestToken(req, data));
+        if (!user) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'Authentication required' }));
+          return;
+        }
+
+        // SEC-REQ-03: never trust sender identity supplied by the client.
         const result = chatManager.sendPrivateMessage(db, {
           senderSocket: null,
-          sender: { id: data.senderId || null, username: data.senderUsername },
+          sender: user,
           recipientUsername: data.recipientUsername,
           content: data.content
         });
@@ -190,8 +239,22 @@ const server = http.createServer(async (req, res) => {
       }
       return;
     } else if (req.method === 'GET') {
+      const token = getRequestToken(req);
+      const user = getAuthenticatedUser(token);
       const userA = url.searchParams.get('userA');
       const userB = url.searchParams.get('userB');
+      if (!user || !userA || !userB) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: 'Authentication required' }));
+        return;
+      }
+      // Only the authenticated user may retrieve a conversation they participate in.
+      const normalized = user.username.toLowerCase();
+      if (userA.toLowerCase() !== normalized && userB.toLowerCase() !== normalized) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: 'Not authorized to view this conversation' }));
+        return;
+      }
       const history = chatManager.getPrivateHistory(db, userA, userB);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true, messages: history }));
@@ -228,36 +291,66 @@ const server = http.createServer(async (req, res) => {
 });
 
 // WebSocket Server for Real-Time Multi-User Chat (FR-10, FR-11)
+// SEC-REQ-02: authenticate the WebSocket handshake before accepting the connection.
 if (WebSocketServer) {
-  const wss = new WebSocketServer({ server });
+  const wss = new WebSocketServer({ noServer: true });
+
+  server.on('upgrade', (req, socket, head) => {
+    try {
+      const requestUrl = new URL(req.url, `http://${req.headers.host}`);
+      const token = requestUrl.searchParams.get('token');
+      const userId = sessions.getUserId(token);
+
+      if (!userId) {
+        socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+
+      wss.handleUpgrade(req, socket, head, (ws) => {
+        // Bind the authenticated session to this socket. Client payloads cannot replace it.
+        sessions.attachSocket(token, userId, ws);
+        wss.emit('connection', ws, req);
+      });
+    } catch {
+      socket.destroy();
+    }
+  });
 
   wss.on('connection', (ws) => {
     let currentRoomId = null;
-    let currentUser = null;
+    const authenticatedUserId = sessions.getUserId(ws.sessionToken);
+    const currentUser = authenticatedUserId
+      ? db.prepare('SELECT id, username FROM users WHERE id = ?').get(authenticatedUserId)
+      : null;
+
+    if (!currentUser) {
+      ws.close(1008, 'Invalid session');
+      return;
+    }
+
+    chatManager.registerOnlineUser(ws, currentUser);
 
     ws.on('message', (message) => {
       try {
+        // SEC-REQ-02 + SEC-REQ-06: reject events from expired/logged-out sessions.
+        if (!sessions.isSocketAuthenticated(ws)) {
+          ws.send(JSON.stringify({ type: 'error', message: 'Session expired. Please log in again.' }));
+          ws.close(1008, 'Invalid session');
+          return;
+        }
+
         const data = JSON.parse(message.toString());
 
-        if (data.type === 'auth') {
-          currentUser = data.user;
-          if (data.token && !sessions.attachSocket(data.token, currentUser.id, ws)) {
-            ws.send(JSON.stringify({ type: 'error', message: 'Session expired. Please log in again.' }));
-            ws.close(1008, 'Invalid session');
-            return;
-          }
-          chatManager.registerOnlineUser(ws, currentUser);
-          ws.send(JSON.stringify({ type: 'auth_success', user: currentUser }));
-        } else if (data.type === 'join_room') {
-          if (data.token && !sessions.attachSocket(data.token, data.user && data.user.id, ws)) {
-            ws.send(JSON.stringify({ type: 'error', message: 'Session expired. Please log in again.' }));
-            ws.close(1008, 'Invalid session');
-            return;
-          }
+        if (!data || typeof data !== 'object' || typeof data.type !== 'string') {
+          ws.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }));
+          return;
+        }
 
+        if (data.type === 'join_room') {
           const requestedRoomId = Number(data.roomId);
-          if (!Number.isInteger(requestedRoomId) || requestedRoomId <= 0 || !data.user || !data.user.username) {
-            ws.send(JSON.stringify({ type: 'error', message: 'A valid room and logged-in user are required to join' }));
+          if (!Number.isInteger(requestedRoomId) || requestedRoomId <= 0) {
+            ws.send(JSON.stringify({ type: 'error', message: 'A valid room is required to join' }));
             return;
           }
 
@@ -267,7 +360,7 @@ if (WebSocketServer) {
             return;
           }
 
-          // FR-07: Leave the previous room before joining another one.
+          // SEC-REQ-03: identity is always taken from the authenticated session.
           if (currentRoomId !== null && String(currentRoomId) !== String(requestedRoomId)) {
             const previousRoomId = currentRoomId;
             chatManager.leaveRoom(ws, previousRoomId);
@@ -280,8 +373,6 @@ if (WebSocketServer) {
           }
 
           currentRoomId = requestedRoomId;
-          currentUser = data.user;
-          chatManager.registerOnlineUser(ws, currentUser);
           const members = chatManager.joinRoom(currentRoomId, ws, currentUser);
           const history = chatManager.getStoredMessages(db, currentRoomId);
 
@@ -292,18 +383,19 @@ if (WebSocketServer) {
             history
           }));
 
-          // Notify everyone in the room about online members.
           chatManager.broadcastToRoom(currentRoomId, {
             type: 'presence',
             roomId: currentRoomId,
             members
           });
         } else if (data.type === 'send_message') {
-          if (!currentRoomId || !currentUser) {
+          // SEC-REQ-04: a socket can send only after joining its current room.
+          if (!currentRoomId) {
             ws.send(JSON.stringify({ type: 'error', message: 'You must join a room first' }));
             return;
           }
 
+          // SEC-REQ-03: ignore any sender/user identity in the client payload.
           chatManager.sendMessage(db, {
             roomId: currentRoomId,
             userId: currentUser.id,
@@ -311,48 +403,53 @@ if (WebSocketServer) {
             content: data.content
           });
         } else if (data.type === 'send_private_message') {
-          // FR-23: Private one-to-one messaging
-          if (!currentUser) {
-            ws.send(JSON.stringify({ type: 'error', message: 'Must be logged in to send private messages' }));
+          if (typeof data.recipient !== 'string' || typeof data.content !== 'string') {
+            ws.send(JSON.stringify({ type: 'error', message: 'Invalid private message fields' }));
             return;
           }
 
-          const res = chatManager.sendPrivateMessage(db, {
+          const result = chatManager.sendPrivateMessage(db, {
             senderSocket: ws,
             sender: currentUser,
             recipientUsername: data.recipient,
             content: data.content
           });
 
-          if (!res.success) {
-            ws.send(JSON.stringify({ type: 'error', message: res.message }));
+          if (!result.success) {
+            ws.send(JSON.stringify({ type: 'error', message: result.message }));
           }
         } else if (data.type === 'leave_room') {
-          if (currentRoomId) {
-            chatManager.leaveRoom(ws, currentRoomId);
-            const members = chatManager.getRoomMembers(currentRoomId);
-            chatManager.broadcastToRoom(currentRoomId, {
+          if (currentRoomId !== null) {
+            const roomId = currentRoomId;
+            chatManager.leaveRoom(ws, roomId);
+            const members = chatManager.getRoomMembers(roomId);
+            chatManager.broadcastToRoom(roomId, {
               type: 'presence',
-              roomId: currentRoomId,
+              roomId,
               members
             });
             currentRoomId = null;
+            // Keep the socket registered as online after leaving a room.
+            chatManager.registerOnlineUser(ws, currentUser);
           }
+        } else {
+          ws.send(JSON.stringify({ type: 'error', message: 'Unknown chat event' }));
         }
       } catch (err) {
-        ws.send(JSON.stringify({ type: 'error', message: err.message }));
+        ws.send(JSON.stringify({ type: 'error', message: 'Invalid message request' }));
       }
     });
 
     ws.on('close', () => {
       sessions.detachSocket(ws);
       chatManager.removeOnlineUser(ws);
-      if (currentRoomId) {
-        chatManager.leaveRoom(ws, currentRoomId);
-        const members = chatManager.getRoomMembers(currentRoomId);
-        chatManager.broadcastToRoom(currentRoomId, {
+      if (currentRoomId !== null) {
+        const roomId = currentRoomId;
+        chatManager.leaveRoom(ws, roomId);
+        const members = chatManager.getRoomMembers(roomId);
+        chatManager.broadcastToRoom(roomId, {
           type: 'presence',
-          roomId: currentRoomId,
+          roomId,
           members
         });
       }

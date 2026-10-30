@@ -5,7 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "test": "node --test tests/fr01_user_registration.test.js tests/fr02_duplicate_username.test.js tests/fr04_user_logout.test.js tests/fr05_create_room.test.js tests/fr07_join_chat_room.test.js tests/fr11_multi_user_room.test.js tests/fr20_login_failure.test.js tests/fr23_private_messaging.test.js"
+    "test": "node --test tests/fr01_user_registration.test.js tests/fr02_duplicate_username.test.js tests/fr04_user_logout.test.js tests/fr05_create_room.test.js tests/fr07_join_chat_room.test.js tests/fr11_multi_user_room.test.js tests/fr20_login_failure.test.js tests/fr23_private_messaging.test.js tests/security_requirements.test.js"
   },
   "keywords": [
     "chat",
@@ -16,6 +16,7 @@
   "author": "Amartya Sinha, Anagha B Poojari, Anirudh Ganesh Prabhu",
   "license": "ISC",
   "dependencies": {
-    "ws": "^8.22.0"
+    "ws": "^8.22.0",
+    "bcryptjs": "^3.0.2"
   }
 }

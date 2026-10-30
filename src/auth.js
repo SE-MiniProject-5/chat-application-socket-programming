@@ -1,27 +1,35 @@
-const crypto = require('node:crypto');
+const bcrypt = require('bcryptjs');
+
+const BCRYPT_COST = 10;
 
 /**
- * Hash password with random salt
+ * Hash a password using bcrypt with the minimum cost required by SEC-REQ-01.
+ * Passwords are never returned, logged, or stored in plaintext.
  */
 function hashPassword(password) {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-  return `${salt}:${hash}`;
+  if (typeof password !== 'string') {
+    throw new TypeError('Password must be a string');
+  }
+  if (bcrypt.truncates(password)) {
+    throw new Error('Password is too long for bcrypt');
+  }
+  return bcrypt.hashSync(password, BCRYPT_COST);
+}
+
+/** Verify a plaintext password against a bcrypt hash. */
+function verifyPassword(password, storedHash) {
+  if (typeof password !== 'string' || typeof storedHash !== 'string') return false;
+  try {
+    return bcrypt.compareSync(password, storedHash);
+  } catch {
+    return false;
+  }
 }
 
 /**
- * Verify password against stored hash
- */
-function verifyPassword(password, stored) {
-  const [salt, key] = stored.split(':');
-  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-  return crypto.timingSafeEqual(Buffer.from(key, 'hex'), Buffer.from(hash, 'hex'));
-}
-
-/**
- * Validates registration input according to FR-01:
- * Username: 3 to 20 chars (letters, digits, and underscore only)
- * Password: 8 to 64 chars
+ * Validates registration input according to FR-01 and SEC-REQ-05.
+ * Username: 3 to 20 chars (letters, digits, underscore only)
+ * Password: 8 to 64 chars and within bcrypt's 72-byte input limit
  */
 function validateRegistrationInput(username, password) {
   if (typeof username !== 'string' || typeof password !== 'string') {
@@ -45,42 +53,30 @@ function validateRegistrationInput(username, password) {
     };
   }
 
+  if (bcrypt.truncates(password)) {
+    return {
+      valid: false,
+      message: 'Password is too long for secure hashing'
+    };
+  }
+
   return { valid: true, cleanUsername };
 }
 
-/**
- * Registers a new user.
- * Implements FR-02:
- * "The system shall reject a registration whose username already exists,
- *  compared without regard to letter case, and shall display the message 'Username already taken'."
- *
- * @param {object} db - DatabaseSync instance
- * @param {string} username - Submitted username
- * @param {string} password - Submitted password
- * @returns {object} { success: boolean, message?: string, user?: object }
- */
 function registerUser(db, username, password) {
-  // 1. Basic validation (FR-01)
   const validation = validateRegistrationInput(username, password);
   if (!validation.valid) {
     return { success: false, message: validation.message };
   }
 
   const targetUsername = validation.cleanUsername;
-
-  // 2. FR-02: Check for existing username (case-insensitive)
-  // SQLite's COLLATE NOCASE or LOWER() ensures case-insensitivity
   const checkStmt = db.prepare('SELECT id, username FROM users WHERE LOWER(username) = LOWER(?)');
   const existingUser = checkStmt.get(targetUsername);
 
   if (existingUser) {
-    return {
-      success: false,
-      message: 'Username already taken' // Exact required string from FR-02
-    };
+    return { success: false, message: 'Username already taken' };
   }
 
-  // 3. Hash password and insert user (SR-01)
   const passwordHash = hashPassword(password);
   const insertStmt = db.prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)');
   const result = insertStmt.run(targetUsername, passwordHash);
@@ -95,14 +91,8 @@ function registerUser(db, username, password) {
   };
 }
 
-/**
- * Authenticate a user with username and password.
- * Implements FR-20:
- * "When login fails, the system shall display the message 'Invalid username or password'
- *  and shall not indicate which of the two was wrong."
- */
 function loginUser(db, username, password) {
-  if (!username || typeof username !== 'string' || !password || typeof password !== 'string') {
+  if (typeof username !== 'string' || typeof password !== 'string') {
     return { success: false, message: 'Invalid username or password' };
   }
 
@@ -114,7 +104,6 @@ function loginUser(db, username, password) {
   const stmt = db.prepare('SELECT id, username, password_hash FROM users WHERE LOWER(username) = LOWER(?)');
   const user = stmt.get(cleanUsername);
 
-  // If user does not exist or password does not match, return identical error (FR-20)
   if (!user || !verifyPassword(password, user.password_hash)) {
     return { success: false, message: 'Invalid username or password' };
   }
@@ -130,6 +119,7 @@ function loginUser(db, username, password) {
 }
 
 module.exports = {
+  BCRYPT_COST,
   validateRegistrationInput,
   registerUser,
   loginUser,

@@ -9,7 +9,12 @@ function initWebSocket() {
   }
 
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}`;
+  if (!sessionToken) {
+    showAlert('Please log in again before connecting to chat.', 'error');
+    return;
+  }
+
+  const wsUrl = `${protocol}//${window.location.host}?token=${encodeURIComponent(sessionToken)}`;
 
   try {
     socket = new WebSocket(wsUrl);
@@ -19,9 +24,7 @@ function initWebSocket() {
       if (currentRoom && currentUser) {
         socket.send(JSON.stringify({
           type: 'join_room',
-          roomId: currentRoom.id,
-          user: currentUser,
-          token: sessionToken
+          roomId: currentRoom.id
         }));
       }
     };
@@ -137,9 +140,7 @@ function joinRoom(room) {
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({
       type: 'join_room',
-      roomId: room.id,
-      user: currentUser,
-      token: sessionToken
+      roomId: room.id
     }));
   }
 }
@@ -225,10 +226,11 @@ async function handleSendMessage(event) {
       try {
         const res = await fetch('/api/messages/private', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionToken}`
+          },
           body: JSON.stringify({
-            senderId: currentUser ? currentUser.id : null,
-            senderUsername: currentUser ? currentUser.username : 'Anonymous',
             recipientUsername: recipient,
             content: dmContent
           })
@@ -265,12 +267,11 @@ async function handleSendMessage(event) {
     try {
       const res = await fetch(`/api/rooms/${currentRoom.id}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: currentUser ? currentUser.id : null,
-          username: currentUser ? currentUser.username : 'Anonymous',
-          content: rawContent
-        })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`
+        },
+        body: JSON.stringify({ content: rawContent })
       });
       const data = await res.json();
       if (data.success) {
@@ -298,11 +299,11 @@ async function handleCreateRoom(event) {
   try {
     const response = await fetch('/api/rooms', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: roomName,
-        created_by: currentUser ? currentUser.id : null
-      })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionToken}`
+      },
+      body: JSON.stringify({ name: roomName })
     });
 
     const data = await response.json();
