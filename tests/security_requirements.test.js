@@ -199,8 +199,9 @@ describe('NR-09 / SEC-REQ-02 to SEC-REQ-05: authenticated WebSocket security', (
     assert.match(error.message, /1 and 500/);
 
     const appSource = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public', 'app.js'), 'utf8');
-    assert.match(appSource, /escapeHtml/);
+    // SR-05: user text is rendered with textContent, never interpolated into innerHTML.
     assert.match(appSource, /textContent/);
+    assert.doesNotMatch(appSource, /innerHTML\s*=\s*`[^`]*\$\{msg\./);
 
     aliceSocket.close();
   });
