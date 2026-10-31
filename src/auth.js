@@ -1,21 +1,29 @@
 const crypto = require('node:crypto');
+const bcrypt = require('bcryptjs');
 
 /**
- * Hash password with random salt
+ * Store passwords as bcrypt hashes with a work factor of 10.
  */
 function hashPassword(password) {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-  return `${salt}:${hash}`;
+  return bcrypt.hashSync(password, 10);
 }
 
 /**
- * Verify password against stored hash
+ * Verify bcrypt hashes and support one-time upgrade of legacy scrypt hashes.
  */
 function verifyPassword(password, stored) {
+  if (typeof stored !== 'string') return false;
+  if (/^\$2[aby]\$/.test(stored)) {
+    return bcrypt.compareSync(password, stored);
+  }
+
+  // Backward compatibility for accounts created before SR-01.
   const [salt, key] = stored.split(':');
-  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-  return crypto.timingSafeEqual(Buffer.from(key, 'hex'), Buffer.from(hash, 'hex'));
+  if (!salt || !key) return false;
+  const expected = Buffer.from(key, 'hex');
+  const actual = crypto.scryptSync(password, salt, 64);
+  if (expected.length !== actual.length) return false;
+  return crypto.timingSafeEqual(expected, actual);
 }
 
 /**
@@ -117,6 +125,10 @@ function loginUser(db, username, password) {
   // If user does not exist or password does not match, return identical error (FR-20)
   if (!user || !verifyPassword(password, user.password_hash)) {
     return { success: false, message: 'Invalid username or password' };
+  }
+
+  if (!/^\$2[aby]\$/.test(user.password_hash)) {
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(password), user.id);
   }
 
   return {

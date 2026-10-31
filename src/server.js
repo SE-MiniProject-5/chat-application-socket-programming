@@ -15,9 +15,29 @@ try {
 }
 
 const PORT = process.env.PORT || 3000;
-const db = createDatabase();
+const SAFE_SERVER_ERROR = 'The server could not complete your request. Please try again.';
+
+// FR-21: Log diagnostic details on the server; never expose them to clients.
+function logServerError(context, err) {
+  console.error(`[${context}]`, err);
+}
+const db = createDatabase(process.env.DB_PATH || undefined);
 const chatManager = new ChatManager();
-const sessions = createSessionManager();
+// SEC-REQ-06: tokens last 24 h by default (SESSION_TTL_MS is only for tests/ops overrides).
+const sessions = createSessionManager(
+  process.env.SESSION_TTL_MS ? { ttlMs: Number(process.env.SESSION_TTL_MS) } : {}
+);
+
+/**
+ * Resolve a session token to the canonical user record.
+ * Client-supplied usernames and user IDs are deliberately ignored.
+ */
+function resolveSessionUser(database, sessionManager, token) {
+  const userId = sessionManager.getUserId(token);
+  if (!userId) return null;
+  const row = database.prepare('SELECT id, username FROM users WHERE id = ?').get(userId);
+  return row ? { id: row.id, username: row.username } : null;
+}
 
 // Helper to parse JSON body
 function parseJsonBody(req) {
@@ -71,7 +91,8 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify(result));
     } catch (err) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, message: err.message }));
+      logServerError('API request failed', err);
+      res.end(JSON.stringify({ success: false, message: SAFE_SERVER_ERROR }));
     }
     return;
   }
@@ -116,7 +137,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify(result));
     } catch (err) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, message: err.message }));
+      res.end(JSON.stringify({ success: false, message: SAFE_SERVER_ERROR }));
     }
     return;
   }
@@ -129,7 +150,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify(result));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, message: err.message }));
+      res.end(JSON.stringify({ success: false, message: SAFE_SERVER_ERROR }));
     }
     return;
   }
@@ -146,17 +167,24 @@ const server = http.createServer(async (req, res) => {
     } else if (req.method === 'POST') {
       try {
         const data = await parseJsonBody(req);
+        const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || data.token;
+        const authenticatedUser = resolveSessionUser(db, sessions, token);
+        if (!authenticatedUser) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'Authentication required' }));
+          return;
+        }
         const result = chatManager.sendMessage(db, {
           roomId,
-          userId: data.userId || null,
-          username: data.username,
+          userId: authenticatedUser.id,
+          username: authenticatedUser.username,
           content: data.content
         });
         res.writeHead(result.success ? 201 : 400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, message: err.message }));
+        res.end(JSON.stringify({ success: false, message: SAFE_SERVER_ERROR }));
       }
       return;
     }
@@ -176,9 +204,16 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST') {
       try {
         const data = await parseJsonBody(req);
+        const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || data.token;
+        const authenticatedUser = resolveSessionUser(db, sessions, token);
+        if (!authenticatedUser) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'Authentication required' }));
+          return;
+        }
         const result = chatManager.sendPrivateMessage(db, {
           senderSocket: null,
-          sender: { id: data.senderId || null, username: data.senderUsername },
+          sender: authenticatedUser,
           recipientUsername: data.recipientUsername,
           content: data.content
         });
@@ -186,7 +221,7 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify(result));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, message: err.message }));
+        res.end(JSON.stringify({ success: false, message: SAFE_SERVER_ERROR }));
       }
       return;
     } else if (req.method === 'GET') {
@@ -218,7 +253,8 @@ const server = http.createServer(async (req, res) => {
         res.end('404 Not Found');
       } else {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
-        res.end(`Server Error: ${err.code}`);
+        logServerError('Static file read failed', err);
+        res.end(SAFE_SERVER_ERROR);
       }
     } else {
       res.writeHead(200, { 'Content-Type': contentType });
@@ -228,36 +264,64 @@ const server = http.createServer(async (req, res) => {
 });
 
 // WebSocket Server for Real-Time Multi-User Chat (FR-10, FR-11)
+// SR-02 / SEC-REQ-02: every socket connection must carry a valid, unexpired session token
+// (?token=...). Connections without one are refused during the HTTP upgrade (401), so they never
+// become sockets, and no chat event is processed from a connection whose session is no longer valid.
 if (WebSocketServer) {
-  const wss = new WebSocketServer({ server });
+  const wss = new WebSocketServer({ noServer: true });
+
+  // Drop expired sessions (and close their sockets) even when the client is idle.
+  setInterval(() => sessions.pruneExpired(), 60 * 1000).unref();
+
+  function refuseUpgrade(socket, status, text) {
+    socket.write(`HTTP/1.1 ${status} ${text}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
+    socket.destroy();
+  }
+
+  server.on('upgrade', (req, socket, head) => {
+    let token = null;
+    try {
+      token = new URL(req.url, 'http://localhost').searchParams.get('token');
+    } catch (err) {
+      return refuseUpgrade(socket, 400, 'Bad Request');
+    }
+
+    const userId = sessions.resolve(token);
+    const user = userId === null
+      ? null
+      : db.prepare('SELECT id, username FROM users WHERE id = ?').get(userId);
+    if (!user) return refuseUpgrade(socket, 401, 'Unauthorized');
+
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      // The identity is bound to the token here; nothing the client sends can change it.
+      ws.user = { id: user.id, username: user.username };
+      sessions.attachSocket(token, user.id, ws);
+      wss.emit('connection', ws, req);
+    });
+  });
 
   wss.on('connection', (ws) => {
     let currentRoomId = null;
-    let currentUser = null;
+    const currentUser = ws.user;
+    chatManager.registerOnlineUser(ws, currentUser);
 
     ws.on('message', (message) => {
       try {
+        // SR-02: re-check the session on every event; an expired/invalidated token ends the connection.
+        if (sessions.resolve(ws.sessionToken) === null) {
+          ws.send(JSON.stringify({ type: 'error', message: 'Session expired. Please log in again.' }));
+          ws.close(1008, 'Invalid session');
+          return;
+        }
+
         const data = JSON.parse(message.toString());
 
         if (data.type === 'auth') {
-          currentUser = data.user;
-          if (data.token && !sessions.attachSocket(data.token, currentUser.id, ws)) {
-            ws.send(JSON.stringify({ type: 'error', message: 'Session expired. Please log in again.' }));
-            ws.close(1008, 'Invalid session');
-            return;
-          }
-          chatManager.registerOnlineUser(ws, currentUser);
           ws.send(JSON.stringify({ type: 'auth_success', user: currentUser }));
         } else if (data.type === 'join_room') {
-          if (data.token && !sessions.attachSocket(data.token, data.user && data.user.id, ws)) {
-            ws.send(JSON.stringify({ type: 'error', message: 'Session expired. Please log in again.' }));
-            ws.close(1008, 'Invalid session');
-            return;
-          }
-
           const requestedRoomId = Number(data.roomId);
-          if (!Number.isInteger(requestedRoomId) || requestedRoomId <= 0 || !data.user || !data.user.username) {
-            ws.send(JSON.stringify({ type: 'error', message: 'A valid room and logged-in user are required to join' }));
+          if (!Number.isInteger(requestedRoomId) || requestedRoomId <= 0) {
+            ws.send(JSON.stringify({ type: 'error', message: 'A valid room is required to join' }));
             return;
           }
 
@@ -280,7 +344,6 @@ if (WebSocketServer) {
           }
 
           currentRoomId = requestedRoomId;
-          currentUser = data.user;
           chatManager.registerOnlineUser(ws, currentUser);
           const members = chatManager.joinRoom(currentRoomId, ws, currentUser);
           const history = chatManager.getStoredMessages(db, currentRoomId);
@@ -299,24 +362,25 @@ if (WebSocketServer) {
             members
           });
         } else if (data.type === 'send_message') {
-          if (!currentRoomId || !currentUser) {
-            ws.send(JSON.stringify({ type: 'error', message: 'You must join a room first' }));
+          if (!currentRoomId || !currentUser || !chatManager.isSocketInRoom(currentRoomId, ws)) {
+            ws.send(JSON.stringify({ type: 'error', message: 'You must join the target room before sending messages' }));
             return;
           }
 
-          chatManager.sendMessage(db, {
+          const result = chatManager.sendMessage(db, {
             roomId: currentRoomId,
             userId: currentUser.id,
             username: currentUser.username,
             content: data.content
           });
+
+          // FR-19: Invalid messages are rejected and the error is sent only to
+          // the originating socket. No room broadcast occurs on failure.
+          if (!result.success) {
+            ws.send(JSON.stringify({ type: 'error', message: result.message }));
+          }
         } else if (data.type === 'send_private_message') {
           // FR-23: Private one-to-one messaging
-          if (!currentUser) {
-            ws.send(JSON.stringify({ type: 'error', message: 'Must be logged in to send private messages' }));
-            return;
-          }
-
           const res = chatManager.sendPrivateMessage(db, {
             senderSocket: ws,
             sender: currentUser,
@@ -340,7 +404,10 @@ if (WebSocketServer) {
           }
         }
       } catch (err) {
-        ws.send(JSON.stringify({ type: 'error', message: err.message }));
+        logServerError('WebSocket message handling failed', err);
+        if (ws.readyState === 1) {
+          ws.send(JSON.stringify({ type: 'error', message: 'The server could not process that action. Please try again.' }));
+        }
       }
     });
 
@@ -366,4 +433,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, db, chatManager, sessions };
+module.exports = { server, db, chatManager, sessions, resolveSessionUser, SAFE_SERVER_ERROR };
