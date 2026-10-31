@@ -5,7 +5,12 @@ let socket = null;
 let reconnectTimer = null;
 let reconnectAttempts = 0;
 let isLoggingOut = false;
+// FR-17: set on logout so a deliberate disconnect is never retried.
+let intentionalDisconnect = false;
 const MAX_RECONNECT_DELAY = 10000;
+// FR-17: Automatically retry dropped WebSocket connections and restore the previous room.
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_DELAY_MS = 1000;
 
 function updateConnectionState(state) {
   const status = document.getElementById('connection-status');
@@ -21,10 +26,24 @@ function updateConnectionState(state) {
   }
 }
 
+function clearReconnectTimer() {
+  if (reconnectTimer !== null) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+}
+
 function scheduleReconnect() {
-  if (!currentUser || isLoggingOut || reconnectTimer) return;
+  if (!currentUser || isLoggingOut || intentionalDisconnect || !sessionToken || reconnectTimer !== null) return;
+
+  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    updateConnectionState('Disconnected');
+    showAlert('Connection lost. Please reload the page.', 'error');
+    return;
+  }
+
   updateConnectionState('Reconnecting');
-  const delay = Math.min(1000 * (2 ** reconnectAttempts), MAX_RECONNECT_DELAY);
+  const delay = Math.min(RECONNECT_DELAY_MS * (2 ** reconnectAttempts), MAX_RECONNECT_DELAY);
   reconnectAttempts += 1;
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
@@ -56,9 +75,13 @@ function initWebSocket() {
 
     socket.onopen = () => {
       opened = true;
-      reconnectAttempts = 0;
       updateConnectionState('Connected');
       console.log('Connected to WebSocket server');
+      // FR-17: A successful connection resets the retry counter.
+      reconnectAttempts = 0;
+      clearReconnectTimer();
+
+      // FR-17: Rejoin the room that was active before the connection dropped.
       if (currentRoom && currentUser) {
         socket.send(JSON.stringify({
           type: 'join_room',
@@ -82,6 +105,10 @@ function initWebSocket() {
           renderMessageHistory(data.history);
         } else if (data.type === 'error') {
           showAlert(data.message, 'error');
+          // An invalid/expired session cannot be recovered by reconnecting.
+          if (data.message === 'Session expired. Please log in again.') {
+            intentionalDisconnect = true;
+          }
         }
       } catch (err) {
         console.error('Error parsing WS message:', err);
@@ -103,13 +130,24 @@ function initWebSocket() {
         forceLogin('Your session has expired. Please log in again.');
         return;
       }
-      if (!isLoggingOut) scheduleReconnect();
+
+      // FR-17: Unexpected disconnects are retried five times.
+      if (!intentionalDisconnect && sessionToken) {
+        scheduleReconnect();
+      }
     };
   } catch (err) {
     console.error('WebSocket connection failed:', err);
+    socket = null;
     updateConnectionState('Disconnected');
     scheduleReconnect();
   }
+}
+
+function updateQuickStartVisibility(tab) {
+  const quickStart = document.getElementById('quick-start');
+  if (!quickStart) return;
+  quickStart.classList.toggle('hidden', tab === 'chat');
 }
 
 function switchTab(tab) {
@@ -123,6 +161,7 @@ function switchTab(tab) {
   const alertBox = document.getElementById('alert-box');
 
   alertBox.className = 'alert hidden';
+  updateQuickStartVisibility(tab);
 
   regForm.classList.add('hidden');
   loginForm.classList.add('hidden');
@@ -156,7 +195,7 @@ function showAlert(message, type = 'error') {
   alertBox.className = `alert ${type}`;
 }
 
-async function fetchRooms() {
+async function fetchRooms(options = {}) {
   try {
     const res = await fetch('/api/rooms');
     const data = await res.json();
@@ -178,6 +217,11 @@ async function fetchRooms() {
         li.onclick = () => joinRoom(room);
         list.appendChild(li);
       });
+
+      if (options.autoJoin && data.rooms.length > 0) {
+        const preferredRoom = data.rooms.find(room => String(room.name).toLowerCase() === 'general') || data.rooms[0];
+        joinRoom(preferredRoom, { firstUse: true });
+      }
     } else {
       list.innerHTML = '<li style="color: #8b949e; justify-content: center;">No rooms created yet</li>';
     }
@@ -186,7 +230,7 @@ async function fetchRooms() {
   }
 }
 
-function joinRoom(room) {
+function joinRoom(room, options = {}) {
   if (!currentUser) {
     showAlert('Please log in first to join a chat room!', 'error');
     switchTab('login');
@@ -196,6 +240,10 @@ function joinRoom(room) {
   currentRoom = room;
   document.getElementById('current-room-title').textContent = `# ${room.name}`;
   document.getElementById('messages-container').innerHTML = '';
+  const firstMessageHint = document.getElementById('chat-first-message-hint');
+  if (firstMessageHint) {
+    firstMessageHint.classList.toggle('hidden', !options.firstUse);
+  }
   switchTab('chat');
 
   initWebSocket();
@@ -208,6 +256,9 @@ function joinRoom(room) {
 }
 
 function leaveCurrentRoom() {
+  // Leaving a room intentionally does not mean the WebSocket should reconnect.
+  clearReconnectTimer();
+  reconnectAttempts = 0;
   if (socket && socket.readyState === WebSocket.OPEN && currentRoom) {
     socket.send(JSON.stringify({ type: 'leave_room', roomId: currentRoom.id }));
   }
@@ -457,11 +508,16 @@ async function handleRegister(event) {
       showAlert(`Success! Account created for "${data.user.username}". You can now log in.`, 'success');
       currentUser = data.user;
       sessionToken = data.token;
+      intentionalDisconnect = false;
+      reconnectAttempts = 0;
       sessionStorage.setItem('chat_user', JSON.stringify(currentUser));
       sessionStorage.setItem('chat_session_token', sessionToken);
       usernameInput.value = '';
       passwordInput.value = '';
-      setTimeout(() => switchTab('rooms'), 800);
+      setTimeout(() => {
+        switchTab('rooms');
+        fetchRooms({ autoJoin: true });
+      }, 500);
     }
   } catch (error) {
     showAlert('Server connection error. Please try again.', 'error');
@@ -503,6 +559,9 @@ function forceLogin(message) {
 }
 
 async function handleLogout() {
+  intentionalDisconnect = true;
+  clearReconnectTimer();
+  reconnectAttempts = 0;
   const logoutButton = document.getElementById('logout-btn');
   logoutButton.disabled = true;
 
@@ -548,6 +607,8 @@ async function handleLogin(event) {
     } else {
       currentUser = data.user;
       sessionToken = data.token;
+      intentionalDisconnect = false;
+      reconnectAttempts = 0;
       sessionStorage.setItem('chat_user', JSON.stringify(currentUser));
       sessionStorage.setItem('chat_session_token', sessionToken);
       isLoggingOut = false;
