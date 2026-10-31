@@ -2,11 +2,45 @@ let currentUser = JSON.parse(sessionStorage.getItem('chat_user') || 'null');
 let sessionToken = sessionStorage.getItem('chat_session_token');
 let currentRoom = null;
 let socket = null;
+let reconnectTimer = null;
+let reconnectAttempts = 0;
+let isLoggingOut = false;
+const MAX_RECONNECT_DELAY = 10000;
+
+function updateConnectionState(state) {
+  const status = document.getElementById('connection-status');
+  const sendButton = document.querySelector('#message-form button[type="submit"]');
+  if (status) {
+    status.textContent = state;
+    status.className = `connection-status ${state.toLowerCase()}`;
+    status.setAttribute('aria-label', `Connection status: ${state}`);
+  }
+  if (sendButton) {
+    sendButton.disabled = state !== 'Connected';
+    sendButton.setAttribute('aria-disabled', String(sendButton.disabled));
+  }
+}
+
+function scheduleReconnect() {
+  if (!currentUser || isLoggingOut || reconnectTimer) return;
+  updateConnectionState('Reconnecting');
+  const delay = Math.min(1000 * (2 ** reconnectAttempts), MAX_RECONNECT_DELAY);
+  reconnectAttempts += 1;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    initWebSocket();
+  }, delay);
+}
 
 function initWebSocket() {
+  if (!currentUser || isLoggingOut) {
+    updateConnectionState('Disconnected');
+    return;
+  }
   if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
     return;
   }
+  updateConnectionState(reconnectAttempts > 0 ? 'Reconnecting' : 'Disconnected');
 
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   // SR-02: the server refuses socket connections that do not carry a valid session token.
@@ -22,6 +56,8 @@ function initWebSocket() {
 
     socket.onopen = () => {
       opened = true;
+      reconnectAttempts = 0;
+      updateConnectionState('Connected');
       console.log('Connected to WebSocket server');
       if (currentRoom && currentUser) {
         socket.send(JSON.stringify({
@@ -54,18 +90,27 @@ function initWebSocket() {
       }
     };
 
+    socket.onerror = () => {
+      updateConnectionState('Reconnecting');
+    };
+
     socket.onclose = (event) => {
       console.log('WebSocket disconnected');
       socket = null;
+      updateConnectionState('Disconnected');
+      if (!currentUser) return;
       // Refused at the handshake (never opened) or closed by the server as an invalid/expired session:
       // the token is no longer good, so send the person back to the login page (UC-10 step 4a).
-      if (!currentUser) return;
       if (!opened || event.code === 1008) {
         forceLogin('Your session has expired. Please log in again.');
+        return;
       }
+      if (!isLoggingOut) scheduleReconnect();
     };
   } catch (err) {
     console.error('WebSocket connection failed:', err);
+    updateConnectionState('Disconnected');
+    scheduleReconnect();
   }
 }
 
@@ -255,6 +300,11 @@ async function handleSendMessage(event) {
     showAlert('Message must be between 1 and 500 characters', 'error');
     return;
   }
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    updateConnectionState('Disconnected');
+    showAlert('You are disconnected. Reconnect before sending messages.', 'error');
+    return;
+  }
 
   // FR-23: Detect private whisper command (/w <username> <message> or /dm <username> <message>)
   const dmMatch = rawContent.match(/^\/(?:w|dm)\s+([A-Za-z0-9_]+)\s+(.+)$/i);
@@ -414,6 +464,11 @@ async function handleRegister(event) {
 
 
 function clearLocalSession() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  reconnectAttempts = 0;
   if (socket) {
     const s = socket;
     socket = null;
@@ -428,6 +483,7 @@ function clearLocalSession() {
   sessionToken = null;
   sessionStorage.removeItem('chat_user');
   sessionStorage.removeItem('chat_session_token');
+  updateConnectionState('Disconnected');
 }
 
 // SR-02: drop local credentials and show the login page when the server rejects our session.
@@ -485,7 +541,9 @@ async function handleLogin(event) {
       sessionToken = data.token;
       sessionStorage.setItem('chat_user', JSON.stringify(currentUser));
       sessionStorage.setItem('chat_session_token', sessionToken);
+      isLoggingOut = false;
       showAlert(`Welcome back, ${data.user.username}!`, 'success');
+      initWebSocket();
       setTimeout(() => switchTab('rooms'), 600);
     }
   } catch (error) {
