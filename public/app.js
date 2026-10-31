@@ -5,7 +5,12 @@ let socket = null;
 let reconnectTimer = null;
 let reconnectAttempts = 0;
 let isLoggingOut = false;
+// FR-17: set on logout so a deliberate disconnect is never retried.
+let intentionalDisconnect = false;
 const MAX_RECONNECT_DELAY = 10000;
+// FR-17: Automatically retry dropped WebSocket connections and restore the previous room.
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_DELAY_MS = 1000;
 
 function updateConnectionState(state) {
   const status = document.getElementById('connection-status');
@@ -21,10 +26,24 @@ function updateConnectionState(state) {
   }
 }
 
+function clearReconnectTimer() {
+  if (reconnectTimer !== null) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+}
+
 function scheduleReconnect() {
-  if (!currentUser || isLoggingOut || reconnectTimer) return;
+  if (!currentUser || isLoggingOut || intentionalDisconnect || !sessionToken || reconnectTimer !== null) return;
+
+  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    updateConnectionState('Disconnected');
+    showAlert('Connection lost. Please reload the page.', 'error');
+    return;
+  }
+
   updateConnectionState('Reconnecting');
-  const delay = Math.min(1000 * (2 ** reconnectAttempts), MAX_RECONNECT_DELAY);
+  const delay = Math.min(RECONNECT_DELAY_MS * (2 ** reconnectAttempts), MAX_RECONNECT_DELAY);
   reconnectAttempts += 1;
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
@@ -56,15 +75,17 @@ function initWebSocket() {
 
     socket.onopen = () => {
       opened = true;
-      reconnectAttempts = 0;
       updateConnectionState('Connected');
       console.log('Connected to WebSocket server');
+      // FR-17: A successful connection resets the retry counter.
+      reconnectAttempts = 0;
+      clearReconnectTimer();
+
+      // FR-17: Rejoin the room that was active before the connection dropped.
       if (currentRoom && currentUser) {
         socket.send(JSON.stringify({
           type: 'join_room',
-          roomId: currentRoom.id,
-          user: currentUser,
-          token: sessionToken
+          roomId: currentRoom.id
         }));
       }
     };
@@ -84,6 +105,10 @@ function initWebSocket() {
           renderMessageHistory(data.history);
         } else if (data.type === 'error') {
           showAlert(data.message, 'error');
+          // An invalid/expired session cannot be recovered by reconnecting.
+          if (data.message === 'Session expired. Please log in again.') {
+            intentionalDisconnect = true;
+          }
         }
       } catch (err) {
         console.error('Error parsing WS message:', err);
@@ -105,13 +130,24 @@ function initWebSocket() {
         forceLogin('Your session has expired. Please log in again.');
         return;
       }
-      if (!isLoggingOut) scheduleReconnect();
+
+      // FR-17: Unexpected disconnects are retried five times.
+      if (!intentionalDisconnect && sessionToken) {
+        scheduleReconnect();
+      }
     };
   } catch (err) {
     console.error('WebSocket connection failed:', err);
+    socket = null;
     updateConnectionState('Disconnected');
     scheduleReconnect();
   }
+}
+
+function updateQuickStartVisibility(tab) {
+  const quickStart = document.getElementById('quick-start');
+  if (!quickStart) return;
+  quickStart.classList.toggle('hidden', tab === 'chat');
 }
 
 function switchTab(tab) {
@@ -125,6 +161,7 @@ function switchTab(tab) {
   const alertBox = document.getElementById('alert-box');
 
   alertBox.className = 'alert hidden';
+  updateQuickStartVisibility(tab);
 
   regForm.classList.add('hidden');
   loginForm.classList.add('hidden');
@@ -158,7 +195,7 @@ function showAlert(message, type = 'error') {
   alertBox.className = `alert ${type}`;
 }
 
-async function fetchRooms() {
+async function fetchRooms(options = {}) {
   try {
     const res = await fetch('/api/rooms');
     const data = await res.json();
@@ -168,16 +205,23 @@ async function fetchRooms() {
     if (data.rooms && data.rooms.length > 0) {
       data.rooms.forEach(room => {
         const li = document.createElement('li');
-        const name = document.createElement('span');
-        name.className = 'room-name';
-        name.textContent = `# ${room.name}`;
-        const action = document.createElement('span');
-        action.className = 'room-date';
-        action.textContent = 'Click to enter';
-        li.append(name, action);
+        const roomName = document.createElement('span');
+        roomName.className = 'room-name';
+        roomName.textContent = `# ${room.name || ''}`;
+
+        const roomDate = document.createElement('span');
+        roomDate.className = 'room-date';
+        roomDate.textContent = 'Click to enter';
+
+        li.append(roomName, roomDate);
         li.onclick = () => joinRoom(room);
         list.appendChild(li);
       });
+
+      if (options.autoJoin && data.rooms.length > 0) {
+        const preferredRoom = data.rooms.find(room => String(room.name).toLowerCase() === 'general') || data.rooms[0];
+        joinRoom(preferredRoom, { firstUse: true });
+      }
     } else {
       list.innerHTML = '<li style="color: #8b949e; justify-content: center;">No rooms created yet</li>';
     }
@@ -186,7 +230,7 @@ async function fetchRooms() {
   }
 }
 
-function joinRoom(room) {
+function joinRoom(room, options = {}) {
   if (!currentUser) {
     showAlert('Please log in first to join a chat room!', 'error');
     switchTab('login');
@@ -196,20 +240,25 @@ function joinRoom(room) {
   currentRoom = room;
   document.getElementById('current-room-title').textContent = `# ${room.name}`;
   document.getElementById('messages-container').innerHTML = '';
+  const firstMessageHint = document.getElementById('chat-first-message-hint');
+  if (firstMessageHint) {
+    firstMessageHint.classList.toggle('hidden', !options.firstUse);
+  }
   switchTab('chat');
 
   initWebSocket();
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({
       type: 'join_room',
-      roomId: room.id,
-      user: currentUser,
-      token: sessionToken
+      roomId: room.id
     }));
   }
 }
 
 function leaveCurrentRoom() {
+  // Leaving a room intentionally does not mean the WebSocket should reconnect.
+  clearReconnectTimer();
+  reconnectAttempts = 0;
   if (socket && socket.readyState === WebSocket.OPEN && currentRoom) {
     socket.send(JSON.stringify({ type: 'leave_room', roomId: currentRoom.id }));
   }
@@ -217,11 +266,13 @@ function leaveCurrentRoom() {
   switchTab('rooms');
 }
 
+// FR-14: render the server-provided usernames for the currently joined room.
 function updateOnlineMembers(members) {
   const el = document.getElementById('online-users');
   if (!el) return;
-  const list = members && members.length > 0 ? members.join(', ') : 'None';
-  el.textContent = `Online (${members.length}): ${list}`;
+  const safeMembers = Array.isArray(members) ? [...new Set(members.map(String))].sort((a, b) => a.localeCompare(b)) : [];
+  const list = safeMembers.length > 0 ? safeMembers.join(', ') : 'None';
+  el.textContent = `Online (${safeMembers.length}): ${list}`;
 }
 
 function renderMessageHistory(history) {
@@ -264,30 +315,36 @@ function appendMessage(msg) {
   if (key) item.dataset.key = key;
 
   const isSelf = currentUser && (msg.sender === currentUser.username || msg.userId === currentUser.id);
-  const privateBadge = msg.isPrivate 
-    ? `<span class="badge-private">🔒 Private ${isSelf ? `to @${escapeHtml(msg.recipient)}` : `from @${escapeHtml(msg.sender)}`}</span>` 
-    : '';
 
-  item.innerHTML = `
-    <div class="message-meta">
-      <span class="message-sender ${isSelf ? 'self' : ''}">${escapeHtml(msg.sender)}</span>
-      ${privateBadge}
-      <span class="message-time">${msg.timestamp || ''}</span>
-    </div>
-    <div class="message-text">${escapeHtml(msg.content)}</div>
-  `;
+  // SR-05 / SEC-REQ-05: never insert user-controlled text through innerHTML.
+  // textContent renders HTML/script input as literal text.
+  const meta = document.createElement('div');
+  meta.className = 'message-meta';
 
+  const sender = document.createElement('span');
+  sender.className = `message-sender ${isSelf ? 'self' : ''}`;
+  sender.textContent = String(msg.sender || '');
+  meta.appendChild(sender);
+
+  if (msg.isPrivate) {
+    const badge = document.createElement('span');
+    badge.className = 'badge-private';
+    badge.textContent = `🔒 Private ${isSelf ? `to @${String(msg.recipient || '')}` : `from @${String(msg.sender || '')}`}`;
+    meta.appendChild(badge);
+  }
+
+  const time = document.createElement('span');
+  time.className = 'message-time';
+  time.textContent = String(msg.timestamp || '');
+  meta.appendChild(time);
+
+  const text = document.createElement('div');
+  text.className = 'message-text';
+  text.textContent = String(msg.content || '');
+
+  item.append(meta, text);
   container.appendChild(item);
   container.scrollTop = container.scrollHeight;
-}
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 async function handleSendMessage(event) {
@@ -326,9 +383,11 @@ async function handleSendMessage(event) {
       try {
         const res = await fetch('/api/messages/private', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionToken}`
+          },
           body: JSON.stringify({
-            token: sessionToken,
             recipientUsername: recipient,
             content: dmContent
           })
@@ -365,11 +424,11 @@ async function handleSendMessage(event) {
     try {
       const res = await fetch(`/api/rooms/${currentRoom.id}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: sessionToken,
-          content: rawContent
-        })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`
+        },
+        body: JSON.stringify({ content: rawContent })
       });
       const data = await res.json();
       if (data.success) {
@@ -397,11 +456,11 @@ async function handleCreateRoom(event) {
   try {
     const response = await fetch('/api/rooms', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: roomName,
-        created_by: currentUser ? currentUser.id : null
-      })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionToken}`
+      },
+      body: JSON.stringify({ name: roomName })
     });
 
     const data = await response.json();
@@ -449,11 +508,16 @@ async function handleRegister(event) {
       showAlert(`Success! Account created for "${data.user.username}". You can now log in.`, 'success');
       currentUser = data.user;
       sessionToken = data.token;
+      intentionalDisconnect = false;
+      reconnectAttempts = 0;
       sessionStorage.setItem('chat_user', JSON.stringify(currentUser));
       sessionStorage.setItem('chat_session_token', sessionToken);
       usernameInput.value = '';
       passwordInput.value = '';
-      setTimeout(() => switchTab('rooms'), 800);
+      setTimeout(() => {
+        switchTab('rooms');
+        fetchRooms({ autoJoin: true });
+      }, 500);
     }
   } catch (error) {
     showAlert('Server connection error. Please try again.', 'error');
@@ -495,6 +559,9 @@ function forceLogin(message) {
 }
 
 async function handleLogout() {
+  intentionalDisconnect = true;
+  clearReconnectTimer();
+  reconnectAttempts = 0;
   const logoutButton = document.getElementById('logout-btn');
   logoutButton.disabled = true;
 
@@ -540,6 +607,8 @@ async function handleLogin(event) {
     } else {
       currentUser = data.user;
       sessionToken = data.token;
+      intentionalDisconnect = false;
+      reconnectAttempts = 0;
       sessionStorage.setItem('chat_user', JSON.stringify(currentUser));
       sessionStorage.setItem('chat_session_token', sessionToken);
       isLoggingOut = false;

@@ -8,6 +8,8 @@
  *   accepted messages, in the order the server received them, with no duplicates."
  */
 
+const { validateUsername, validateMessageText } = require('./validation');
+
 class ChatManager {
   constructor() {
     // Map of roomId -> Map<clientSocket, { userId, username }>
@@ -163,21 +165,16 @@ class ChatManager {
    * Sends a message into a room and records sender username (FR-11)
    */
   sendMessage(db, { roomId, userId, username, content }) {
-    if (!content || typeof content !== 'string') {
-      return { success: false, message: 'Message content cannot be empty' };
+    const messageValidation = validateMessageText(content);
+    if (!messageValidation.valid) {
+      return { success: false, message: messageValidation.message };
     }
 
-    const trimmedContent = content.trim();
-    if (trimmedContent.length < 1 || trimmedContent.length > 500) {
-      return {
-        success: false,
-        message: 'Message must be between 1 and 500 characters'
-      };
-    }
-
-    if (!username) {
+    if (typeof username !== 'string' || !username.trim()) {
       return { success: false, message: 'Sender username is required' };
     }
+
+    const trimmedContent = messageValidation.cleanContent;
 
     const timestamp = this.formatTimestamp();
 
@@ -230,23 +227,18 @@ class ChatManager {
    * @returns {object} { success: boolean, message?: string, data?: object }
    */
   sendPrivateMessage(db, { senderSocket, sender, recipientUsername, content }) {
-    if (!content || typeof content !== 'string') {
-      return { success: false, message: 'Message content cannot be empty' };
+    const messageValidation = validateMessageText(content);
+    if (!messageValidation.valid) {
+      return { success: false, message: messageValidation.message };
     }
 
-    const trimmedContent = content.trim();
-    if (trimmedContent.length < 1 || trimmedContent.length > 500) {
-      return {
-        success: false,
-        message: 'Message must be between 1 and 500 characters'
-      };
+    const recipientValidation = validateUsername(recipientUsername);
+    if (!recipientValidation.valid) {
+      return { success: false, message: recipientValidation.message };
     }
 
-    if (!recipientUsername || typeof recipientUsername !== 'string') {
-      return { success: false, message: 'Recipient username is required' };
-    }
-
-    const cleanRecipient = recipientUsername.trim();
+    const trimmedContent = messageValidation.cleanContent;
+    const cleanRecipient = recipientValidation.cleanUsername;
     if (sender && sender.username.toLowerCase() === cleanRecipient.toLowerCase()) {
       return { success: false, message: 'Cannot send private message to yourself' };
     }
@@ -328,6 +320,21 @@ class ChatManager {
       LIMIT ?
     `);
     return stmt.all(usernameA, usernameB, usernameB, usernameA, limit);
+  }
+
+  /**
+   * FR-14: Broadcast the current usernames in a room to every active member.
+   * Keeping this in ChatManager ensures join/leave/disconnect presence updates
+   * always use the same payload shape.
+   */
+  broadcastPresence(roomId) {
+    const members = this.getRoomMembers(roomId);
+    this.broadcastToRoom(roomId, {
+      type: 'presence',
+      roomId: Number(roomId),
+      members
+    });
+    return members;
   }
 
   /**

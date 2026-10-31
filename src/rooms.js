@@ -7,33 +7,8 @@
 /**
  * Validates room name length (3 to 30 characters)
  */
-function validateRoomName(name) {
-  if (typeof name !== 'string') {
-    return { valid: false, message: 'Room name must be a valid string' };
-  }
+const { validateRoomName } = require('./validation');
 
-  const cleanName = name.trim();
-
-  if (cleanName.length < 3 || cleanName.length > 30) {
-    return {
-      valid: false,
-      message: 'Room name must be between 3 and 30 characters'
-    };
-  }
-
-  return { valid: true, cleanName };
-}
-
-/**
- * Creates a new chat room.
- * Implements FR-05 requirement:
- * Rejects duplicate room name (case-insensitive) with exact message "Room name already exists"
- *
- * @param {object} db - DatabaseSync instance
- * @param {string} roomName - Name of the room
- * @param {number|null} createdBy - User ID of creator (optional)
- * @returns {object} { success: boolean, message?: string, room?: object }
- */
 function createRoom(db, roomName, createdBy = null) {
   // 1. Validate length (3-30 characters)
   const validation = validateRoomName(roomName);

@@ -2,6 +2,7 @@ const crypto = require('node:crypto');
 
 // SEC-REQ-06: a session token expires 24 hours after it is issued.
 const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000;
+const SESSION_TTL_MS = DEFAULT_TTL_MS;
 
 /**
  * Session manager implementing:
@@ -16,8 +17,13 @@ function createSessionManager({ ttlMs = DEFAULT_TTL_MS, now = Date.now } = {}) {
   const sessions = new Map();
 
   function create(userId) {
-    const token = crypto.randomBytes(32).toString('hex');
-    sessions.set(token, { userId, sockets: new Set(), expiresAt: now() + ttlMs });
+    const token = crypto.randomBytes(32).toString('hex'); // 256 bits
+    sessions.set(token, {
+      userId,
+      createdAt: now(),
+      expiresAt: now() + ttlMs,
+      sockets: new Set()
+    });
     return token;
   }
 
@@ -46,13 +52,12 @@ function createSessionManager({ ttlMs = DEFAULT_TTL_MS, now = Date.now } = {}) {
 
   // Resolve identity from the opaque server-issued token, never from client data.
   function getUserId(token) {
-    if (typeof token !== 'string') return null;
     return resolve(token);
   }
 
   function attachSocket(token, userId, socket) {
     if (!verify(token, userId)) return false;
-    const session = sessions.get(token);
+    const session = getSession(token);
     session.sockets.add(socket);
     socket.sessionToken = token;
     return true;
@@ -65,11 +70,17 @@ function createSessionManager({ ttlMs = DEFAULT_TTL_MS, now = Date.now } = {}) {
     socket.sessionToken = null;
   }
 
+  function isSocketAuthenticated(socket) {
+    return Boolean(socket && getSession(socket.sessionToken));
+  }
+
   function closeSockets(session, code, reason) {
     for (const socket of session.sockets) {
-      if (socket.readyState === 1 || socket.readyState === undefined) {
-        socket.close(code, reason);
-      }
+      try {
+        if (socket.readyState === 1 || socket.readyState === undefined) {
+          socket.close(code, reason);
+        }
+      } catch {}
     }
     session.sockets.clear();
   }
@@ -78,7 +89,6 @@ function createSessionManager({ ttlMs = DEFAULT_TTL_MS, now = Date.now } = {}) {
     const session = sessions.get(token);
     if (!session) return false;
 
-    // Remove the token before closing sockets so it cannot be reused.
     sessions.delete(token);
     closeSockets(session, 1000, 'Logged out');
     return true;
@@ -102,7 +112,19 @@ function createSessionManager({ ttlMs = DEFAULT_TTL_MS, now = Date.now } = {}) {
     return removed;
   }
 
-  return { create, verify, resolve, getUserId, attachSocket, detachSocket, invalidate, pruneExpired };
+  return {
+    create,
+    verify,
+    resolve,
+    getUserId,
+    getSession,
+    attachSocket,
+    detachSocket,
+    isSocketAuthenticated,
+    invalidate,
+    pruneExpired,
+    SESSION_TTL_MS: ttlMs
+  };
 }
 
-module.exports = { createSessionManager, DEFAULT_TTL_MS };
+module.exports = { createSessionManager, DEFAULT_TTL_MS, SESSION_TTL_MS };

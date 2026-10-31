@@ -1,4 +1,4 @@
-const http = require('node:http');
+const { createTransport } = require('./tls');
 const fs = require('node:fs');
 const path = require('node:path');
 const { createDatabase } = require('./db');
@@ -21,7 +21,7 @@ const SAFE_SERVER_ERROR = 'The server could not complete your request. Please tr
 function logServerError(context, err) {
   console.error(`[${context}]`, err);
 }
-const db = createDatabase(process.env.DB_PATH || undefined);
+const db = createDatabase(process.env.DB_PATH || (process.env.NODE_ENV === 'test' ? ':memory:' : undefined));
 const chatManager = new ChatManager();
 // SEC-REQ-06: tokens last 24 h by default (SESSION_TTL_MS is only for tests/ops overrides).
 const sessions = createSessionManager(
@@ -43,8 +43,13 @@ function resolveSessionUser(database, sessionManager, token) {
 function parseJsonBody(req) {
   return new Promise((resolve, reject) => {
     let body = '';
+    const MAX_BODY_BYTES = 64 * 1024;
     req.on('data', chunk => {
       body += chunk.toString();
+      if (Buffer.byteLength(body, 'utf8') > MAX_BODY_BYTES) {
+        reject(new Error('Request body too large'));
+        req.destroy();
+      }
     });
     req.on('end', () => {
       try {
@@ -66,7 +71,19 @@ const MIME_TYPES = {
   '.png': 'image/png'
 };
 
-const server = http.createServer(async (req, res) => {
+function getRequestToken(req, body = {}) {
+  const authorization = req.headers.authorization;
+  if (typeof authorization === 'string' && authorization.startsWith('Bearer ')) {
+    return authorization.slice(7).trim();
+  }
+  return typeof body.token === 'string' ? body.token : null;
+}
+
+function getAuthenticatedUser(token) {
+  return resolveSessionUser(db, sessions, token);
+}
+
+const requestHandler = async (req, res) => {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -78,7 +95,8 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  const url = new URL(req.url, `http://${req.headers.host}`);
+  const requestProtocol = req.socket.encrypted ? 'https' : 'http';
+  const url = new URL(req.url, `${requestProtocol}://${req.headers.host}`);
 
   // API Endpoints
   if (url.pathname === '/api/register' && req.method === 'POST') {
@@ -131,7 +149,13 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/rooms' && req.method === 'POST') {
     try {
       const data = await parseJsonBody(req);
-      const result = createRoom(db, data.name, data.created_by || null);
+      const user = getAuthenticatedUser(getRequestToken(req, data));
+      if (!user) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: 'Authentication required' }));
+        return;
+      }
+      const result = createRoom(db, data.name, user.id);
 
       res.writeHead(result.success ? 201 : 400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(result));
@@ -167,17 +191,26 @@ const server = http.createServer(async (req, res) => {
     } else if (req.method === 'POST') {
       try {
         const data = await parseJsonBody(req);
-        const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || data.token;
-        const authenticatedUser = resolveSessionUser(db, sessions, token);
-        if (!authenticatedUser) {
+        const user = getAuthenticatedUser(getRequestToken(req, data));
+        if (!user) {
           res.writeHead(401, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: false, message: 'Authentication required' }));
           return;
         }
+
+        // SEC-REQ-04: HTTP fallback is allowed only for a user currently in the room.
+        const members = chatManager.getRoomMembers(roomId);
+        if (!members.some(name => name.toLowerCase() === user.username.toLowerCase())) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'Join the room before sending messages' }));
+          return;
+        }
+
+        // SEC-REQ-03: sender identity comes from the authenticated session.
         const result = chatManager.sendMessage(db, {
           roomId,
-          userId: authenticatedUser.id,
-          username: authenticatedUser.username,
+          userId: user.id,
+          username: user.username,
           content: data.content
         });
         res.writeHead(result.success ? 201 : 400, { 'Content-Type': 'application/json' });
@@ -204,16 +237,17 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST') {
       try {
         const data = await parseJsonBody(req);
-        const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || data.token;
-        const authenticatedUser = resolveSessionUser(db, sessions, token);
-        if (!authenticatedUser) {
+        const user = getAuthenticatedUser(getRequestToken(req, data));
+        if (!user) {
           res.writeHead(401, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: false, message: 'Authentication required' }));
           return;
         }
+
+        // SEC-REQ-03: never trust sender identity supplied by the client.
         const result = chatManager.sendPrivateMessage(db, {
           senderSocket: null,
-          sender: authenticatedUser,
+          sender: user,
           recipientUsername: data.recipientUsername,
           content: data.content
         });
@@ -225,8 +259,22 @@ const server = http.createServer(async (req, res) => {
       }
       return;
     } else if (req.method === 'GET') {
+      const token = getRequestToken(req);
+      const user = getAuthenticatedUser(token);
       const userA = url.searchParams.get('userA');
       const userB = url.searchParams.get('userB');
+      if (!user || !userA || !userB) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: 'Authentication required' }));
+        return;
+      }
+      // Only the authenticated user may retrieve a conversation they participate in.
+      const normalized = user.username.toLowerCase();
+      if (userA.toLowerCase() !== normalized && userB.toLowerCase() !== normalized) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: 'Not authorized to view this conversation' }));
+        return;
+      }
       const history = chatManager.getPrivateHistory(db, userA, userB);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true, messages: history }));
@@ -261,7 +309,11 @@ const server = http.createServer(async (req, res) => {
       res.end(content);
     }
   });
-});
+};
+
+// SEC-REQ-08: localhost may use HTTP; non-localhost deployments are HTTPS-only.
+const { server: transportServer, tlsEnabled } = createTransport(requestHandler);
+const server = transportServer;
 
 // WebSocket Server for Real-Time Multi-User Chat (FR-10, FR-11)
 // SR-02 / SEC-REQ-02: every socket connection must carry a valid, unexpired session token
@@ -316,6 +368,11 @@ if (WebSocketServer) {
 
         const data = JSON.parse(message.toString());
 
+        if (!data || typeof data !== 'object' || typeof data.type !== 'string') {
+          ws.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }));
+          return;
+        }
+
         if (data.type === 'auth') {
           ws.send(JSON.stringify({ type: 'auth_success', user: currentUser }));
         } else if (data.type === 'join_room') {
@@ -331,16 +388,12 @@ if (WebSocketServer) {
             return;
           }
 
-          // FR-07: Leave the previous room before joining another one.
+          // SEC-REQ-03: identity is always taken from the authenticated session.
           if (currentRoomId !== null && String(currentRoomId) !== String(requestedRoomId)) {
             const previousRoomId = currentRoomId;
             chatManager.leaveRoom(ws, previousRoomId);
-            const previousMembers = chatManager.getRoomMembers(previousRoomId);
-            chatManager.broadcastToRoom(previousRoomId, {
-              type: 'presence',
-              roomId: previousRoomId,
-              members: previousMembers
-            });
+            // FR-14: refresh the previous room's online-user list after a move.
+            chatManager.broadcastPresence(previousRoomId);
           }
 
           currentRoomId = requestedRoomId;
@@ -355,12 +408,8 @@ if (WebSocketServer) {
             history
           }));
 
-          // Notify everyone in the room about online members.
-          chatManager.broadcastToRoom(currentRoomId, {
-            type: 'presence',
-            roomId: currentRoomId,
-            members
-          });
+          // FR-14: every join refreshes the joined room's online-user list.
+          chatManager.broadcastPresence(currentRoomId);
         } else if (data.type === 'send_message') {
           if (!currentRoomId || !currentUser || !chatManager.isSocketInRoom(currentRoomId, ws)) {
             ws.send(JSON.stringify({ type: 'error', message: 'You must join the target room before sending messages' }));
@@ -380,28 +429,33 @@ if (WebSocketServer) {
             ws.send(JSON.stringify({ type: 'error', message: result.message }));
           }
         } else if (data.type === 'send_private_message') {
-          // FR-23: Private one-to-one messaging
-          const res = chatManager.sendPrivateMessage(db, {
+          if (typeof data.recipient !== 'string' || typeof data.content !== 'string') {
+            ws.send(JSON.stringify({ type: 'error', message: 'Invalid private message fields' }));
+            return;
+          }
+
+          const result = chatManager.sendPrivateMessage(db, {
             senderSocket: ws,
             sender: currentUser,
             recipientUsername: data.recipient,
             content: data.content
           });
 
-          if (!res.success) {
-            ws.send(JSON.stringify({ type: 'error', message: res.message }));
+          if (!result.success) {
+            ws.send(JSON.stringify({ type: 'error', message: result.message }));
           }
         } else if (data.type === 'leave_room') {
-          if (currentRoomId) {
-            chatManager.leaveRoom(ws, currentRoomId);
-            const members = chatManager.getRoomMembers(currentRoomId);
-            chatManager.broadcastToRoom(currentRoomId, {
-              type: 'presence',
-              roomId: currentRoomId,
-              members
-            });
+          if (currentRoomId !== null) {
+            const roomId = currentRoomId;
+            chatManager.leaveRoom(ws, roomId);
+            // FR-14: leaving refreshes the list for remaining members.
+            chatManager.broadcastPresence(roomId);
             currentRoomId = null;
+            // Keep the socket registered as online after leaving a room.
+            chatManager.registerOnlineUser(ws, currentUser);
           }
+        } else {
+          ws.send(JSON.stringify({ type: 'error', message: 'Unknown chat event' }));
         }
       } catch (err) {
         logServerError('WebSocket message handling failed', err);
@@ -414,14 +468,11 @@ if (WebSocketServer) {
     ws.on('close', () => {
       sessions.detachSocket(ws);
       chatManager.removeOnlineUser(ws);
-      if (currentRoomId) {
-        chatManager.leaveRoom(ws, currentRoomId);
-        const members = chatManager.getRoomMembers(currentRoomId);
-        chatManager.broadcastToRoom(currentRoomId, {
-          type: 'presence',
-          roomId: currentRoomId,
-          members
-        });
+      if (currentRoomId !== null) {
+        const roomId = currentRoomId;
+        chatManager.leaveRoom(ws, roomId);
+        // FR-14: disconnects refresh the list for remaining members.
+        chatManager.broadcastPresence(roomId);
       }
     });
   });
@@ -429,7 +480,9 @@ if (WebSocketServer) {
 
 if (require.main === module) {
   server.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}/`);
+    const protocol = tlsEnabled ? 'https' : 'http';
+    const host = process.env.HOST || '127.0.0.1';
+    console.log(`Server running at ${protocol}://${host}:${PORT}/`);
   });
 }
 
