@@ -123,7 +123,13 @@ async function fetchRooms() {
     if (data.rooms && data.rooms.length > 0) {
       data.rooms.forEach(room => {
         const li = document.createElement('li');
-        li.innerHTML = `<span class="room-name"># ${room.name}</span> <span class="room-date">Click to enter</span>`;
+        const name = document.createElement('span');
+        name.className = 'room-name';
+        name.textContent = `# ${room.name}`;
+        const action = document.createElement('span');
+        action.className = 'room-date';
+        action.textContent = 'Click to enter';
+        li.append(name, action);
         li.onclick = () => joinRoom(room);
         list.appendChild(li);
       });
@@ -242,6 +248,10 @@ async function handleSendMessage(event) {
   const rawContent = input.value.trim();
 
   if (!rawContent) return;
+  if (rawContent.length > 500) {
+    showAlert('Message must be between 1 and 500 characters', 'error');
+    return;
+  }
 
   // FR-23: Detect private whisper command (/w <username> <message> or /dm <username> <message>)
   const dmMatch = rawContent.match(/^\/(?:w|dm)\s+([A-Za-z0-9_]+)\s+(.+)$/i);
