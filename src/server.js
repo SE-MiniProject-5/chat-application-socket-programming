@@ -15,6 +15,12 @@ try {
 }
 
 const PORT = process.env.PORT || 3000;
+const SAFE_SERVER_ERROR = 'The server could not complete your request. Please try again.';
+
+// FR-21: Log diagnostic details on the server; never expose them to clients.
+function logServerError(context, err) {
+  console.error(`[${context}]`, err);
+}
 const db = createDatabase(process.env.DB_PATH || undefined);
 const chatManager = new ChatManager();
 // SEC-REQ-06: tokens last 24 h by default (SESSION_TTL_MS is only for tests/ops overrides).
@@ -85,7 +91,8 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify(result));
     } catch (err) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, message: err.message }));
+      logServerError('API request failed', err);
+      res.end(JSON.stringify({ success: false, message: SAFE_SERVER_ERROR }));
     }
     return;
   }
@@ -130,7 +137,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify(result));
     } catch (err) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, message: err.message }));
+      res.end(JSON.stringify({ success: false, message: SAFE_SERVER_ERROR }));
     }
     return;
   }
@@ -143,7 +150,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify(result));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, message: err.message }));
+      res.end(JSON.stringify({ success: false, message: SAFE_SERVER_ERROR }));
     }
     return;
   }
@@ -177,7 +184,7 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify(result));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, message: err.message }));
+        res.end(JSON.stringify({ success: false, message: SAFE_SERVER_ERROR }));
       }
       return;
     }
@@ -214,7 +221,7 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify(result));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, message: err.message }));
+        res.end(JSON.stringify({ success: false, message: SAFE_SERVER_ERROR }));
       }
       return;
     } else if (req.method === 'GET') {
@@ -246,7 +253,8 @@ const server = http.createServer(async (req, res) => {
         res.end('404 Not Found');
       } else {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
-        res.end(`Server Error: ${err.code}`);
+        logServerError('Static file read failed', err);
+        res.end(SAFE_SERVER_ERROR);
       }
     } else {
       res.writeHead(200, { 'Content-Type': contentType });
@@ -396,7 +404,10 @@ if (WebSocketServer) {
           }
         }
       } catch (err) {
-        ws.send(JSON.stringify({ type: 'error', message: err.message }));
+        logServerError('WebSocket message handling failed', err);
+        if (ws.readyState === 1) {
+          ws.send(JSON.stringify({ type: 'error', message: 'The server could not process that action. Please try again.' }));
+        }
       }
     });
 
@@ -422,4 +433,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, db, chatManager, sessions, resolveSessionUser };
+module.exports = { server, db, chatManager, sessions, resolveSessionUser, SAFE_SERVER_ERROR };
