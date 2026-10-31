@@ -329,8 +329,8 @@ if (WebSocketServer) {
             members
           });
         } else if (data.type === 'send_message') {
-          if (!currentRoomId) {
-            ws.send(JSON.stringify({ type: 'error', message: 'You must join a room first' }));
+          if (!currentRoomId || !currentUser || !chatManager.isSocketInRoom(currentRoomId, ws)) {
+            ws.send(JSON.stringify({ type: 'error', message: 'You must join the target room before sending messages' }));
             return;
           }
 

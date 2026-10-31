@@ -136,6 +136,14 @@ class ChatManager {
   }
 
   /**
+   * SR-04: Confirm that a specific socket is a member of the requested room.
+   */
+  isSocketInRoom(roomId, clientSocket) {
+    const members = this.rooms.get(String(roomId));
+    return Boolean(members && members.has(clientSocket));
+  }
+
+  /**
    * Gets the list of online usernames in a room
    */
   getRoomMembers(roomId) {
