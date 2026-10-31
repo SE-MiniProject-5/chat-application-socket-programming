@@ -77,9 +77,10 @@ describe('FR-16: Connection state indicator', () => {
     context.currentRoom = { id: 1 };
     context.socket = null;
     elements['message-form'] = elements['message-form'] || {};
+    const alertBox = { textContent: '', className: '' };
     context.document.getElementById = id => id === 'message-input'
       ? { value: 'hello' } : id === 'alert-box'
-        ? { textContent: '', className: '' } : null;
+        ? alertBox : null;
 
     await context.handleSendMessage({ preventDefault() { prevented = true; } });
     assert.equal(prevented, true);
