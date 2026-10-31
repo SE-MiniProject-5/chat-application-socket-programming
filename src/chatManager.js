@@ -366,10 +366,18 @@ class ChatManager {
    */
   getStoredMessages(db, roomId, limit = 50) {
     if (!db) return [];
+
+    const safeLimit = Number.isInteger(Number(limit)) && Number(limit) > 0
+      ? Math.min(Number(limit), 50)
+      : 50;
+
+    // Select the newest messages first, then reverse them so the UI receives
+    // the selected history in chronological order (oldest to newest).
     const stmt = db.prepare(
-      'SELECT id, room_id AS roomId, username AS sender, user_id AS userId, content, created_at AS createdAt FROM messages WHERE room_id = ? ORDER BY id ASC LIMIT ?'
+      'SELECT id, room_id AS roomId, username AS sender, user_id AS userId, content, created_at AS createdAt FROM messages WHERE room_id = ? ORDER BY id DESC LIMIT ?'
     );
-    return stmt.all(Number(roomId), limit);
+
+    return stmt.all(Number(roomId), safeLimit).reverse();
   }
 }
 

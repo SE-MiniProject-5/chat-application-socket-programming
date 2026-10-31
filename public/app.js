@@ -184,7 +184,10 @@ function renderMessageHistory(history) {
   container.innerHTML = '';
   renderedMessageKeys.clear();
   if (history && history.length > 0) {
-    history.forEach(appendMessage);
+    history.forEach(message => appendMessage({
+      ...message,
+      timestamp: message.timestamp || message.createdAt || message.created_at || ''
+    }));
   }
 }
 
