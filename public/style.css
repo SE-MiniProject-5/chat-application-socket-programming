@@ -71,6 +71,42 @@ body {
   border-bottom-color: #58a6ff;
 }
 
+
+.quick-start {
+  background: rgba(88, 166, 255, 0.08);
+  border: 1px solid rgba(88, 166, 255, 0.35);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  font-size: 12px;
+  color: #c9d1d9;
+}
+
+.quick-start strong {
+  color: #f0f6fc;
+  font-size: 13px;
+}
+
+.quick-start ol {
+  margin: 8px 0 6px 18px;
+  padding: 0;
+}
+
+.quick-start li {
+  margin: 4px 0;
+}
+
+.quick-start small {
+  color: #8b949e;
+}
+
+.chat-first-message-hint {
+  display: block;
+  color: #58a6ff;
+  font-size: 11px;
+  margin: -5px 0 8px;
+}
+
 .alert {
   padding: 12px 16px;
   border-radius: 6px;

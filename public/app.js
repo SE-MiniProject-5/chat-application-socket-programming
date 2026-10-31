@@ -105,6 +105,12 @@ function initWebSocket() {
   }
 }
 
+function updateQuickStartVisibility(tab) {
+  const quickStart = document.getElementById('quick-start');
+  if (!quickStart) return;
+  quickStart.classList.toggle('hidden', tab === 'chat');
+}
+
 function switchTab(tab) {
   const regForm = document.getElementById('register-form');
   const loginForm = document.getElementById('login-form');
@@ -116,6 +122,7 @@ function switchTab(tab) {
   const alertBox = document.getElementById('alert-box');
 
   alertBox.className = 'alert hidden';
+  updateQuickStartVisibility(tab);
 
   regForm.classList.add('hidden');
   loginForm.classList.add('hidden');
@@ -149,7 +156,7 @@ function showAlert(message, type = 'error') {
   alertBox.className = `alert ${type}`;
 }
 
-async function fetchRooms() {
+async function fetchRooms(options = {}) {
   try {
     const res = await fetch('/api/rooms');
     const data = await res.json();
@@ -171,6 +178,11 @@ async function fetchRooms() {
         li.onclick = () => joinRoom(room);
         list.appendChild(li);
       });
+
+      if (options.autoJoin && data.rooms.length > 0) {
+        const preferredRoom = data.rooms.find(room => String(room.name).toLowerCase() === 'general') || data.rooms[0];
+        joinRoom(preferredRoom, { firstUse: true });
+      }
     } else {
       list.innerHTML = '<li style="color: #8b949e; justify-content: center;">No rooms created yet</li>';
     }
@@ -179,7 +191,7 @@ async function fetchRooms() {
   }
 }
 
-function joinRoom(room) {
+function joinRoom(room, options = {}) {
   if (!currentUser) {
     showAlert('Please log in first to join a chat room!', 'error');
     switchTab('login');
@@ -189,6 +201,10 @@ function joinRoom(room) {
   currentRoom = room;
   document.getElementById('current-room-title').textContent = `# ${room.name}`;
   document.getElementById('messages-container').innerHTML = '';
+  const firstMessageHint = document.getElementById('chat-first-message-hint');
+  if (firstMessageHint) {
+    firstMessageHint.classList.toggle('hidden', !options.firstUse);
+  }
   switchTab('chat');
 
   initWebSocket();
@@ -423,7 +439,10 @@ async function handleRegister(event) {
       sessionStorage.setItem('chat_session_token', sessionToken);
       usernameInput.value = '';
       passwordInput.value = '';
-      setTimeout(() => switchTab('rooms'), 800);
+      setTimeout(() => {
+        switchTab('rooms');
+        fetchRooms({ autoJoin: true });
+      }, 500);
     }
   } catch (error) {
     showAlert('Server connection error. Please try again.', 'error');
