@@ -15,9 +15,12 @@ try {
 }
 
 const PORT = process.env.PORT || 3000;
-const db = createDatabase();
+const db = createDatabase(process.env.DB_PATH || undefined);
 const chatManager = new ChatManager();
-const sessions = createSessionManager();
+// SEC-REQ-06: tokens last 24 h by default (SESSION_TTL_MS is only for tests/ops overrides).
+const sessions = createSessionManager(
+  process.env.SESSION_TTL_MS ? { ttlMs: Number(process.env.SESSION_TTL_MS) } : {}
+);
 
 // Helper to parse JSON body
 function parseJsonBody(req) {
@@ -228,36 +231,64 @@ const server = http.createServer(async (req, res) => {
 });
 
 // WebSocket Server for Real-Time Multi-User Chat (FR-10, FR-11)
+// SR-02 / SEC-REQ-02: every socket connection must carry a valid, unexpired session token
+// (?token=...). Connections without one are refused during the HTTP upgrade (401), so they never
+// become sockets, and no chat event is processed from a connection whose session is no longer valid.
 if (WebSocketServer) {
-  const wss = new WebSocketServer({ server });
+  const wss = new WebSocketServer({ noServer: true });
+
+  // Drop expired sessions (and close their sockets) even when the client is idle.
+  setInterval(() => sessions.pruneExpired(), 60 * 1000).unref();
+
+  function refuseUpgrade(socket, status, text) {
+    socket.write(`HTTP/1.1 ${status} ${text}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
+    socket.destroy();
+  }
+
+  server.on('upgrade', (req, socket, head) => {
+    let token = null;
+    try {
+      token = new URL(req.url, 'http://localhost').searchParams.get('token');
+    } catch (err) {
+      return refuseUpgrade(socket, 400, 'Bad Request');
+    }
+
+    const userId = sessions.resolve(token);
+    const user = userId === null
+      ? null
+      : db.prepare('SELECT id, username FROM users WHERE id = ?').get(userId);
+    if (!user) return refuseUpgrade(socket, 401, 'Unauthorized');
+
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      // The identity is bound to the token here; nothing the client sends can change it.
+      ws.user = { id: user.id, username: user.username };
+      sessions.attachSocket(token, user.id, ws);
+      wss.emit('connection', ws, req);
+    });
+  });
 
   wss.on('connection', (ws) => {
     let currentRoomId = null;
-    let currentUser = null;
+    const currentUser = ws.user;
+    chatManager.registerOnlineUser(ws, currentUser);
 
     ws.on('message', (message) => {
       try {
+        // SR-02: re-check the session on every event; an expired/invalidated token ends the connection.
+        if (sessions.resolve(ws.sessionToken) === null) {
+          ws.send(JSON.stringify({ type: 'error', message: 'Session expired. Please log in again.' }));
+          ws.close(1008, 'Invalid session');
+          return;
+        }
+
         const data = JSON.parse(message.toString());
 
         if (data.type === 'auth') {
-          currentUser = data.user;
-          if (data.token && !sessions.attachSocket(data.token, currentUser.id, ws)) {
-            ws.send(JSON.stringify({ type: 'error', message: 'Session expired. Please log in again.' }));
-            ws.close(1008, 'Invalid session');
-            return;
-          }
-          chatManager.registerOnlineUser(ws, currentUser);
           ws.send(JSON.stringify({ type: 'auth_success', user: currentUser }));
         } else if (data.type === 'join_room') {
-          if (data.token && !sessions.attachSocket(data.token, data.user && data.user.id, ws)) {
-            ws.send(JSON.stringify({ type: 'error', message: 'Session expired. Please log in again.' }));
-            ws.close(1008, 'Invalid session');
-            return;
-          }
-
           const requestedRoomId = Number(data.roomId);
-          if (!Number.isInteger(requestedRoomId) || requestedRoomId <= 0 || !data.user || !data.user.username) {
-            ws.send(JSON.stringify({ type: 'error', message: 'A valid room and logged-in user are required to join' }));
+          if (!Number.isInteger(requestedRoomId) || requestedRoomId <= 0) {
+            ws.send(JSON.stringify({ type: 'error', message: 'A valid room is required to join' }));
             return;
           }
 
@@ -280,7 +311,6 @@ if (WebSocketServer) {
           }
 
           currentRoomId = requestedRoomId;
-          currentUser = data.user;
           chatManager.registerOnlineUser(ws, currentUser);
           const members = chatManager.joinRoom(currentRoomId, ws, currentUser);
           const history = chatManager.getStoredMessages(db, currentRoomId);
@@ -299,7 +329,7 @@ if (WebSocketServer) {
             members
           });
         } else if (data.type === 'send_message') {
-          if (!currentRoomId || !currentUser) {
+          if (!currentRoomId) {
             ws.send(JSON.stringify({ type: 'error', message: 'You must join a room first' }));
             return;
           }
@@ -312,11 +342,6 @@ if (WebSocketServer) {
           });
         } else if (data.type === 'send_private_message') {
           // FR-23: Private one-to-one messaging
-          if (!currentUser) {
-            ws.send(JSON.stringify({ type: 'error', message: 'Must be logged in to send private messages' }));
-            return;
-          }
-
           const res = chatManager.sendPrivateMessage(db, {
             senderSocket: ws,
             sender: currentUser,
