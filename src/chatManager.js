@@ -323,6 +323,21 @@ class ChatManager {
   }
 
   /**
+   * FR-14: Broadcast the current usernames in a room to every active member.
+   * Keeping this in ChatManager ensures join/leave/disconnect presence updates
+   * always use the same payload shape.
+   */
+  broadcastPresence(roomId) {
+    const members = this.getRoomMembers(roomId);
+    this.broadcastToRoom(roomId, {
+      type: 'presence',
+      roomId: Number(roomId),
+      members
+    });
+    return members;
+  }
+
+  /**
    * NR-03: Sends one serialized payload to each socket in an iterable exactly once.
    * Returns a delivery report: { attempted, delivered, failed }.
    * Only OPEN sockets count as "connected"; a socket that throws on send is counted as failed.
