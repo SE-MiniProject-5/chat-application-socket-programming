@@ -1,4 +1,4 @@
-const http = require('node:http');
+const { createTransport } = require('./tls');
 const fs = require('node:fs');
 const path = require('node:path');
 const { createDatabase } = require('./db');
@@ -83,7 +83,7 @@ function getAuthenticatedUser(token) {
   return resolveSessionUser(db, sessions, token);
 }
 
-const server = http.createServer(async (req, res) => {
+const requestHandler = async (req, res) => {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -95,7 +95,8 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  const url = new URL(req.url, `http://${req.headers.host}`);
+  const requestProtocol = req.socket.encrypted ? 'https' : 'http';
+  const url = new URL(req.url, `${requestProtocol}://${req.headers.host}`);
 
   // API Endpoints
   if (url.pathname === '/api/register' && req.method === 'POST') {
@@ -308,7 +309,11 @@ const server = http.createServer(async (req, res) => {
       res.end(content);
     }
   });
-});
+};
+
+// SEC-REQ-08: localhost may use HTTP; non-localhost deployments are HTTPS-only.
+const { server: transportServer, tlsEnabled } = createTransport(requestHandler);
+const server = transportServer;
 
 // WebSocket Server for Real-Time Multi-User Chat (FR-10, FR-11)
 // SR-02 / SEC-REQ-02: every socket connection must carry a valid, unexpired session token
@@ -490,7 +495,9 @@ if (WebSocketServer) {
 
 if (require.main === module) {
   server.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}/`);
+    const protocol = tlsEnabled ? 'https' : 'http';
+    const host = process.env.HOST || '127.0.0.1';
+    console.log(`Server running at ${protocol}://${host}:${PORT}/`);
   });
 }
 

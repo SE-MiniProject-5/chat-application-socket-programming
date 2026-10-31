@@ -29,3 +29,13 @@ communication.
 ## Team
 
 Developed as part of the Software Engineering Mini-Project.
+
+## TLS deployment (SR-08)
+
+Localhost demonstrations may use HTTP. For any non-localhost deployment, set `HOST` to the deployment interface/hostname and provide `TLS_KEY_PATH` and `TLS_CERT_PATH`. The server will refuse to start without TLS certificate files, and the browser will use WSS automatically when served over HTTPS.
+
+Example:
+
+```bash
+HOST=0.0.0.0 TLS_KEY_PATH=/path/server.key TLS_CERT_PATH=/path/server.crt npm start
+```
