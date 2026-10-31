@@ -9,12 +9,19 @@ function initWebSocket() {
   }
 
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}`;
+  // SR-02: the server refuses socket connections that do not carry a valid session token.
+  if (!sessionToken) {
+    forceLogin('Please log in to chat.');
+    return;
+  }
+  const wsUrl = `${protocol}//${window.location.host}/?token=${encodeURIComponent(sessionToken)}`;
 
   try {
     socket = new WebSocket(wsUrl);
+    let opened = false;
 
     socket.onopen = () => {
+      opened = true;
       console.log('Connected to WebSocket server');
       if (currentRoom && currentUser) {
         socket.send(JSON.stringify({
@@ -47,8 +54,15 @@ function initWebSocket() {
       }
     };
 
-    socket.onclose = () => {
+    socket.onclose = (event) => {
       console.log('WebSocket disconnected');
+      socket = null;
+      // Refused at the handshake (never opened) or closed by the server as an invalid/expired session:
+      // the token is no longer good, so send the person back to the login page (UC-10 step 4a).
+      if (!currentUser) return;
+      if (!opened || event.code === 1008) {
+        forceLogin('Your session has expired. Please log in again.');
+      }
     };
   } catch (err) {
     console.error('WebSocket connection failed:', err);
@@ -386,6 +400,30 @@ async function handleRegister(event) {
 }
 
 
+function clearLocalSession() {
+  if (socket) {
+    const s = socket;
+    socket = null;
+    s.onclose = null;
+    if (s.readyState === WebSocket.OPEN || s.readyState === WebSocket.CONNECTING) {
+      s.close(1000, 'Logged out');
+    }
+  }
+
+  currentRoom = null;
+  currentUser = null;
+  sessionToken = null;
+  sessionStorage.removeItem('chat_user');
+  sessionStorage.removeItem('chat_session_token');
+}
+
+// SR-02: drop local credentials and show the login page when the server rejects our session.
+function forceLogin(message) {
+  clearLocalSession();
+  switchTab('login');
+  showAlert(message, 'error');
+}
+
 async function handleLogout() {
   const logoutButton = document.getElementById('logout-btn');
   logoutButton.disabled = true;
@@ -402,18 +440,7 @@ async function handleLogout() {
     console.error('Logout request failed:', error);
   } finally {
     // Always clear this browser's local session and disconnect its socket.
-    if (socket) {
-      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
-        socket.close(1000, 'Logged out');
-      }
-      socket = null;
-    }
-
-    currentRoom = null;
-    currentUser = null;
-    sessionToken = null;
-    sessionStorage.removeItem('chat_user');
-    sessionStorage.removeItem('chat_session_token');
+    clearLocalSession();
 
     document.getElementById('login-form').reset();
     switchTab('login');
