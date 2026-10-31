@@ -22,6 +22,17 @@ const sessions = createSessionManager(
   process.env.SESSION_TTL_MS ? { ttlMs: Number(process.env.SESSION_TTL_MS) } : {}
 );
 
+/**
+ * Resolve a session token to the canonical user record.
+ * Client-supplied usernames and user IDs are deliberately ignored.
+ */
+function resolveSessionUser(database, sessionManager, token) {
+  const userId = sessionManager.getUserId(token);
+  if (!userId) return null;
+  const row = database.prepare('SELECT id, username FROM users WHERE id = ?').get(userId);
+  return row ? { id: row.id, username: row.username } : null;
+}
+
 // Helper to parse JSON body
 function parseJsonBody(req) {
   return new Promise((resolve, reject) => {
@@ -149,10 +160,17 @@ const server = http.createServer(async (req, res) => {
     } else if (req.method === 'POST') {
       try {
         const data = await parseJsonBody(req);
+        const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || data.token;
+        const authenticatedUser = resolveSessionUser(db, sessions, token);
+        if (!authenticatedUser) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'Authentication required' }));
+          return;
+        }
         const result = chatManager.sendMessage(db, {
           roomId,
-          userId: data.userId || null,
-          username: data.username,
+          userId: authenticatedUser.id,
+          username: authenticatedUser.username,
           content: data.content
         });
         res.writeHead(result.success ? 201 : 400, { 'Content-Type': 'application/json' });
@@ -179,9 +197,16 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST') {
       try {
         const data = await parseJsonBody(req);
+        const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || data.token;
+        const authenticatedUser = resolveSessionUser(db, sessions, token);
+        if (!authenticatedUser) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'Authentication required' }));
+          return;
+        }
         const result = chatManager.sendPrivateMessage(db, {
           senderSocket: null,
-          sender: { id: data.senderId || null, username: data.senderUsername },
+          sender: authenticatedUser,
           recipientUsername: data.recipientUsername,
           content: data.content
         });
@@ -397,4 +422,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, db, chatManager, sessions };
+module.exports = { server, db, chatManager, sessions, resolveSessionUser };

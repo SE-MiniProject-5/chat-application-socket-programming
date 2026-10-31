@@ -44,6 +44,12 @@ function createSessionManager({ ttlMs = DEFAULT_TTL_MS, now = Date.now } = {}) {
     return Boolean(session && session.userId === userId);
   }
 
+  // Resolve identity from the opaque server-issued token, never from client data.
+  function getUserId(token) {
+    if (typeof token !== 'string') return null;
+    return resolve(token);
+  }
+
   function attachSocket(token, userId, socket) {
     if (!verify(token, userId)) return false;
     const session = sessions.get(token);
@@ -96,7 +102,7 @@ function createSessionManager({ ttlMs = DEFAULT_TTL_MS, now = Date.now } = {}) {
     return removed;
   }
 
-  return { create, verify, resolve, attachSocket, detachSocket, invalidate, pruneExpired };
+  return { create, verify, resolve, getUserId, attachSocket, detachSocket, invalidate, pruneExpired };
 }
 
 module.exports = { createSessionManager, DEFAULT_TTL_MS };
