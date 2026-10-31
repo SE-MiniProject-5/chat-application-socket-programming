@@ -4,6 +4,8 @@
  *   and shall display the sender's username with every message."
  * - FR-23: "The system shall allow a User to send a private text message to one other online User,
  *   visible only to the sender and that recipient."
+ * - NR-03 (NFR-03): "While sender and recipients stay connected, the system shall deliver 100% of
+ *   accepted messages, in the order the server received them, with no duplicates."
  */
 
 class ChatManager {
@@ -12,6 +14,19 @@ class ChatManager {
     this.rooms = new Map();
     // Map of clientSocket -> { userId, username }
     this.onlineUsers = new Map();
+    // NR-03: per-room monotonic sequence (server receipt order) used when no DB id is available
+    this.roomSeq = new Map();
+  }
+
+  /**
+   * NR-03: Next sequence number for a room. Node runs this synchronously, so the order in
+   * which sendMessage() is entered IS the order the server received the messages.
+   */
+  nextRoomSeq(roomId) {
+    const rId = String(roomId);
+    const next = (this.roomSeq.get(rId) || 0) + 1;
+    this.roomSeq.set(rId, next);
+    return next;
   }
 
   /**
@@ -173,8 +188,12 @@ class ChatManager {
       messageId = Number(result.lastInsertRowid);
     }
 
+    // NR-03: `seq` is the server-receipt order; clients use it (with `id`) to order and de-duplicate.
+    const seq = messageId !== null ? messageId : this.nextRoomSeq(roomId);
+
     const messagePayload = {
       id: messageId,
+      seq,
       roomId: Number(roomId),
       sender: username,
       userId: userId || null,
@@ -182,14 +201,15 @@ class ChatManager {
       timestamp: timestamp
     };
 
-    this.broadcastToRoom(roomId, {
+    const delivery = this.broadcastToRoom(roomId, {
       type: 'chat_message',
       ...messagePayload
     });
 
     return {
       success: true,
-      data: messagePayload
+      data: messagePayload,
+      delivery
     };
   }
 
@@ -259,6 +279,7 @@ class ChatManager {
 
     const payload = {
       id: messageId,
+      seq: messageId,
       sender: sender.username,
       recipient: cleanRecipient,
       content: trimmedContent,
@@ -271,29 +292,17 @@ class ChatManager {
       ...payload
     });
 
-    // Deliver ONLY to recipient sockets
-    for (const rSocket of recipientSockets) {
-      try {
-        if (typeof rSocket.send === 'function' && rSocket.readyState === 1) {
-          rSocket.send(outMessage);
-        }
-      } catch (err) {
-        // Socket error handling
-      }
-    }
+    // NR-03: build one de-duplicated target set so no socket can receive the message twice
+    // (recipient sockets first, then the sender's own socket so the sender sees what they sent).
+    const targets = new Set(recipientSockets);
+    if (senderSocket) targets.add(senderSocket);
 
-    // Deliver also to sender socket (so sender sees what they sent)
-    if (senderSocket && typeof senderSocket.send === 'function' && senderSocket.readyState === 1) {
-      try {
-        senderSocket.send(outMessage);
-      } catch (err) {
-        // Socket error handling
-      }
-    }
+    const delivery = this.sendToSockets(targets, outMessage);
 
     return {
       success: true,
-      data: payload
+      data: payload,
+      delivery
     };
   }
 
@@ -314,22 +323,34 @@ class ChatManager {
   }
 
   /**
-   * Broadcasts a JSON message to all active sockets in the room
+   * NR-03: Sends one serialized payload to each socket in an iterable exactly once.
+   * Returns a delivery report: { attempted, delivered, failed }.
+   * Only OPEN sockets count as "connected"; a socket that throws on send is counted as failed.
+   */
+  sendToSockets(sockets, data) {
+    const report = { attempted: 0, delivered: 0, failed: 0 };
+    for (const socket of new Set(sockets)) {
+      if (!socket || typeof socket.send !== 'function' || socket.readyState !== 1) continue;
+      report.attempted++;
+      try {
+        socket.send(data);
+        report.delivered++;
+      } catch (err) {
+        report.failed++;
+      }
+    }
+    return report;
+  }
+
+  /**
+   * Broadcasts a JSON message to all active sockets in the room (each member socket exactly once,
+   * in the order calls are made - NR-03). Returns the delivery report.
    */
   broadcastToRoom(roomId, payload) {
     const rId = String(roomId);
-    if (!this.rooms.has(rId)) return;
+    if (!this.rooms.has(rId)) return { attempted: 0, delivered: 0, failed: 0 };
 
-    const data = JSON.stringify(payload);
-    for (const socket of this.rooms.get(rId).keys()) {
-      try {
-        if (typeof socket.send === 'function' && socket.readyState === 1) {
-          socket.send(data);
-        }
-      } catch (err) {
-        // Socket error handling
-      }
-    }
+    return this.sendToSockets(this.rooms.get(rId).keys(), JSON.stringify(payload));
   }
 
   /**
