@@ -340,6 +340,9 @@ if (WebSocketServer) {
             username: currentUser.username,
             content: data.content
           });
+
+          // FR-19: Invalid messages are rejected and the error is sent only to
+          // the originating socket. No room broadcast occurs on failure.
           if (!result.success) {
             ws.send(JSON.stringify({ type: 'error', message: result.message }));
           }

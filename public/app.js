@@ -295,9 +295,12 @@ async function handleSendMessage(event) {
   const input = document.getElementById('message-input');
   const rawContent = input.value.trim();
 
-  if (!rawContent) return;
+  if (!rawContent) {
+    showAlert('Message cannot be empty or whitespace-only.', 'error');
+    return;
+  }
   if (rawContent.length > 500) {
-    showAlert('Message must be between 1 and 500 characters', 'error');
+    showAlert('Message must be between 1 and 500 characters.', 'error');
     return;
   }
   if (!socket || socket.readyState !== WebSocket.OPEN) {
