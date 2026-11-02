@@ -325,6 +325,20 @@ if (WebSocketServer) {
   // Drop expired sessions (and close their sockets) even when the client is idle.
   setInterval(() => sessions.pruneExpired(), 60 * 1000).unref();
 
+  // FR-18: heartbeat detects half-open/lost connections. A missing pong causes
+  // termination on the next 20-second sweep, comfortably inside the 60s SLA.
+  const heartbeatTimer = setInterval(() => {
+    for (const client of wss.clients) {
+      if (client.isAlive === false) {
+        client.terminate();
+        continue;
+      }
+      client.isAlive = false;
+      if (client.readyState === 1) client.ping();
+    }
+  }, 20 * 1000);
+  heartbeatTimer.unref();
+
   function refuseUpgrade(socket, status, text) {
     socket.write(`HTTP/1.1 ${status} ${text}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
     socket.destroy();
@@ -355,7 +369,24 @@ if (WebSocketServer) {
   wss.on('connection', (ws) => {
     let currentRoomId = null;
     const currentUser = ws.user;
+    ws.isAlive = true;
+    ws.on('pong', () => { ws.isAlive = true; });
     chatManager.registerOnlineUser(ws, currentUser);
+
+    // FR-15: system notices are delivered to room peers, never echoed to the actor.
+    function notifyRoomPeers(roomId, action) {
+      const members = chatManager.rooms.get(String(roomId));
+      if (!members) return;
+      const payload = JSON.stringify({
+        type: 'system_notice',
+        roomId: Number(roomId),
+        message: `${currentUser.username} ${action} the room`,
+        timestamp: new Date().toISOString()
+      });
+      for (const memberSocket of members.keys()) {
+        if (memberSocket !== ws && memberSocket.readyState === 1) memberSocket.send(payload);
+      }
+    }
 
     ws.on('message', (message) => {
       try {
@@ -392,6 +423,7 @@ if (WebSocketServer) {
           if (currentRoomId !== null && String(currentRoomId) !== String(requestedRoomId)) {
             const previousRoomId = currentRoomId;
             chatManager.leaveRoom(ws, previousRoomId);
+            notifyRoomPeers(previousRoomId, 'left');
             // FR-14: refresh the previous room's online-user list after a move.
             chatManager.broadcastPresence(previousRoomId);
           }
@@ -399,6 +431,7 @@ if (WebSocketServer) {
           currentRoomId = requestedRoomId;
           chatManager.registerOnlineUser(ws, currentUser);
           const members = chatManager.joinRoom(currentRoomId, ws, currentUser);
+          notifyRoomPeers(currentRoomId, 'joined');
           const history = chatManager.getStoredMessages(db, currentRoomId);
 
           ws.send(JSON.stringify({
@@ -448,6 +481,7 @@ if (WebSocketServer) {
           if (currentRoomId !== null) {
             const roomId = currentRoomId;
             chatManager.leaveRoom(ws, roomId);
+            notifyRoomPeers(roomId, 'left');
             // FR-14: leaving refreshes the list for remaining members.
             chatManager.broadcastPresence(roomId);
             currentRoomId = null;
@@ -471,6 +505,7 @@ if (WebSocketServer) {
       if (currentRoomId !== null) {
         const roomId = currentRoomId;
         chatManager.leaveRoom(ws, roomId);
+        notifyRoomPeers(roomId, 'left');
         // FR-14: disconnects refresh the list for remaining members.
         chatManager.broadcastPresence(roomId);
       }
