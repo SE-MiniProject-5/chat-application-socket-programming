@@ -100,6 +100,8 @@ function initWebSocket() {
           appendMessage(data);
         } else if (data.type === 'presence') {
           updateOnlineMembers(data.members);
+        } else if (data.type === 'system_notice') {
+          appendSystemNotice(data);
         } else if (data.type === 'room_joined') {
           updateOnlineMembers(data.members);
           renderMessageHistory(data.history);
@@ -299,6 +301,34 @@ function messageKey(msg) {
   return `${msg.isPrivate ? 'pm' : 'room'}:${id}`;
 }
 
+// FR-12: server sends an ISO timestamp; format it in this viewer's local timezone.
+function formatLocalTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).format(date);
+}
+
+// FR-15: render join/leave announcements as text, not HTML.
+function appendSystemNotice(notice) {
+  const container = document.getElementById('messages-container');
+  const item = document.createElement('div');
+  item.className = 'message-item system-notice';
+  const message = document.createElement('div');
+  message.className = 'message-text';
+  message.textContent = String(notice.message || '');
+  const time = document.createElement('span');
+  time.className = 'message-time';
+  time.textContent = formatLocalTime(notice.timestamp);
+  item.append(message, time);
+  container.appendChild(item);
+  container.scrollTop = container.scrollHeight;
+}
+
 function appendMessage(msg) {
   const container = document.getElementById('messages-container');
 
@@ -335,7 +365,7 @@ function appendMessage(msg) {
 
   const time = document.createElement('span');
   time.className = 'message-time';
-  time.textContent = String(msg.timestamp || '');
+  time.textContent = formatLocalTime(msg.timestamp || msg.createdAt || msg.created_at || '');
   meta.appendChild(time);
 
   const text = document.createElement('div');
