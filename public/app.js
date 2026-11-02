@@ -3,7 +3,8 @@ let sessionToken = sessionStorage.getItem('chat_session_token');
 let currentRoom = null;
 let socket = null;
 let reconnectTimer = null;
-let reconnectAttempts = 0;\nlet typingStopTimer = null;\nconst typingUsers = new Map();
+let reconnectAttempts = 0;
+let typingStopTimer = null;
 let isLoggingOut = false;
 // FR-17: set on logout so a deliberate disconnect is never retried.
 let intentionalDisconnect = false;
@@ -98,7 +99,9 @@ function initWebSocket() {
         } else if (data.type === 'private_message') {
           // FR-23: Private message received
           appendMessage(data);
-        } else if (data.type === 'typing') {\n          updateTypingIndicator(data.username, data.isTyping);\n        } else if (data.type === 'presence') {
+        } else if (data.type === 'typing') {
+          updateTypingIndicator(data.username, data.isTyping);
+        } else if (data.type === 'presence') {
           updateOnlineMembers(data.members);
         } else if (data.type === 'room_joined') {
           updateOnlineMembers(data.members);
@@ -255,7 +258,11 @@ function joinRoom(room, options = {}) {
   }
 }
 
-function leaveCurrentRoom() {\n  stopLocalTyping();\n  typingUserTimers.forEach(timer => clearTimeout(timer));\n  typingUserTimers.clear();\n  renderTypingIndicator();
+function leaveCurrentRoom() {
+  stopLocalTyping();
+  typingUserTimers.forEach(timer => clearTimeout(timer));
+  typingUserTimers.clear();
+  renderTypingIndicator();
   // Leaving a room intentionally does not mean the WebSocket should reconnect.
   clearReconnectTimer();
   reconnectAttempts = 0;
