@@ -410,6 +410,18 @@ if (WebSocketServer) {
 
           // FR-14: every join refreshes the joined room's online-user list.
           chatManager.broadcastPresence(currentRoomId);
+        } else if (data.type === 'typing') {
+          if (currentRoomId === null || !chatManager.isSocketInRoom(currentRoomId, ws)) return;
+          if (data.isTyping === false) {
+            stopTyping();
+            return;
+          }
+          if (!isTyping) {
+            isTyping = true;
+            chatManager.broadcastTyping(currentRoomId, ws, currentUser.username, true);
+          }
+          if (typingTimer) clearTimeout(typingTimer);
+          typingTimer = setTimeout(stopTyping, 3000);
         } else if (data.type === 'send_message') {
           if (!currentRoomId || !currentUser || !chatManager.isSocketInRoom(currentRoomId, ws)) {
             ws.send(JSON.stringify({ type: 'error', message: 'You must join the target room before sending messages' }));
