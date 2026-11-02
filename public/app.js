@@ -3,7 +3,7 @@ let sessionToken = sessionStorage.getItem('chat_session_token');
 let currentRoom = null;
 let socket = null;
 let reconnectTimer = null;
-let reconnectAttempts = 0;
+let reconnectAttempts = 0;\nlet typingStopTimer = null;\nconst typingUsers = new Map();
 let isLoggingOut = false;
 // FR-17: set on logout so a deliberate disconnect is never retried.
 let intentionalDisconnect = false;
@@ -98,7 +98,7 @@ function initWebSocket() {
         } else if (data.type === 'private_message') {
           // FR-23: Private message received
           appendMessage(data);
-        } else if (data.type === 'presence') {
+        } else if (data.type === 'typing') {\n          updateTypingIndicator(data.username, data.isTyping);\n        } else if (data.type === 'presence') {
           updateOnlineMembers(data.members);
         } else if (data.type === 'room_joined') {
           updateOnlineMembers(data.members);
@@ -255,7 +255,7 @@ function joinRoom(room, options = {}) {
   }
 }
 
-function leaveCurrentRoom() {
+function leaveCurrentRoom() {\n  stopLocalTyping();\n  typingUserTimers.forEach(timer => clearTimeout(timer));\n  typingUserTimers.clear();\n  renderTypingIndicator();
   // Leaving a room intentionally does not mean the WebSocket should reconnect.
   clearReconnectTimer();
   reconnectAttempts = 0;
@@ -264,6 +264,59 @@ function leaveCurrentRoom() {
   }
   currentRoom = null;
   switchTab('rooms');
+}
+
+// FR-22: Keep a short-lived list of other room members who are typing.
+const typingUserTimers = new Map();
+function updateTypingIndicator(username, isTyping) {
+  if (!username || (currentUser && username === currentUser.username)) return;
+  const indicator = document.getElementById('typing-indicator');
+  if (!indicator) return;
+  if (typingUserTimers.has(username)) {
+    clearTimeout(typingUserTimers.get(username));
+    typingUserTimers.delete(username);
+  }
+  if (isTyping) {
+    const timer = setTimeout(() => {
+      typingUserTimers.delete(username);
+      renderTypingIndicator();
+    }, 3000);
+    typingUserTimers.set(username, timer);
+  }
+  renderTypingIndicator();
+}
+
+function renderTypingIndicator() {
+  const indicator = document.getElementById('typing-indicator');
+  if (!indicator) return;
+  const names = [...typingUserTimers.keys()];
+  indicator.textContent = names.length === 0 ? '' : names.length === 1
+    ? `${names[0]} is typing…`
+    : `${names.join(', ')} are typing…`;
+  indicator.classList.toggle('hidden', names.length === 0);
+}
+
+function sendTypingStatus(isTyping) {
+  if (!currentRoom || !socket || socket.readyState !== WebSocket.OPEN) return;
+  socket.send(JSON.stringify({ type: 'typing', isTyping }));
+}
+
+function handleMessageInput() {
+  if (!currentRoom) return;
+  sendTypingStatus(true);
+  if (typingStopTimer) clearTimeout(typingStopTimer);
+  typingStopTimer = setTimeout(() => {
+    sendTypingStatus(false);
+    typingStopTimer = null;
+  }, 2500);
+}
+
+function stopLocalTyping() {
+  if (typingStopTimer) {
+    clearTimeout(typingStopTimer);
+    typingStopTimer = null;
+  }
+  sendTypingStatus(false);
 }
 
 // FR-14: render the server-provided usernames for the currently joined room.
@@ -350,7 +403,7 @@ function appendMessage(msg) {
 async function handleSendMessage(event) {
   event.preventDefault();
   const input = document.getElementById('message-input');
-  const rawContent = input.value.trim();
+  stopLocalTyping();\n  const rawContent = input.value.trim();
 
   if (!rawContent) {
     showAlert('Message cannot be empty or whitespace-only.', 'error');
