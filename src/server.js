@@ -354,6 +354,20 @@ if (WebSocketServer) {
 
   wss.on('connection', (ws) => {
     let currentRoomId = null;
+    let typingTimer = null;
+    let isTyping = false;
+    const currentUser = ws.user;
+
+    function stopTyping() {
+      if (typingTimer) {
+        clearTimeout(typingTimer);
+        typingTimer = null;
+      }
+      if (isTyping && currentRoomId !== null) {
+        chatManager.broadcastTyping(currentRoomId, ws, currentUser.username, false);
+      }
+      isTyping = false;
+    }
     const currentUser = ws.user;
     chatManager.registerOnlineUser(ws, currentUser);
 
@@ -391,6 +405,7 @@ if (WebSocketServer) {
           // SEC-REQ-03: identity is always taken from the authenticated session.
           if (currentRoomId !== null && String(currentRoomId) !== String(requestedRoomId)) {
             const previousRoomId = currentRoomId;
+            stopTyping();
             chatManager.leaveRoom(ws, previousRoomId);
             // FR-14: refresh the previous room's online-user list after a move.
             chatManager.broadcastPresence(previousRoomId);
@@ -459,6 +474,7 @@ if (WebSocketServer) {
         } else if (data.type === 'leave_room') {
           if (currentRoomId !== null) {
             const roomId = currentRoomId;
+            stopTyping();
             chatManager.leaveRoom(ws, roomId);
             // FR-14: leaving refreshes the list for remaining members.
             chatManager.broadcastPresence(roomId);
@@ -478,6 +494,7 @@ if (WebSocketServer) {
     });
 
     ws.on('close', () => {
+      stopTyping();
       sessions.detachSocket(ws);
       chatManager.removeOnlineUser(ws);
       if (currentRoomId !== null) {
