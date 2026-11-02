@@ -52,12 +52,14 @@ function scheduleReconnect() {
 }
 
 // NR-04: a restored network should trigger an immediate retry instead of waiting for the timer.
-window.addEventListener('online', () => {
-  if (!currentUser || isLoggingOut || intentionalDisconnect || !sessionToken) return;
-  clearReconnectTimer();
-  reconnectAttempts = 0;
-  if (!socket || socket.readyState === WebSocket.CLOSED) initWebSocket();
-});
+if (typeof window.addEventListener === 'function') {
+  window.addEventListener('online', () => {
+    if (!currentUser || isLoggingOut || intentionalDisconnect || !sessionToken) return;
+    clearReconnectTimer();
+    reconnectAttempts = 0;
+    if (!socket || socket.readyState === WebSocket.CLOSED) initWebSocket();
+  });
+}
 
 function initWebSocket() {
   if (!currentUser || isLoggingOut) {
