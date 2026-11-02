@@ -368,7 +368,6 @@ if (WebSocketServer) {
       }
       isTyping = false;
     }
-    const currentUser = ws.user;
     chatManager.registerOnlineUser(ws, currentUser);
 
     ws.on('message', (message) => {
