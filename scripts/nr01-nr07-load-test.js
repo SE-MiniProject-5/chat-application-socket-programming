@@ -103,7 +103,7 @@ async function main() {
           }
           return performance.now() - started;
         })();
-        sender.send(JSON.stringify({ type: 'send_message', content: `load-${roomIndex}-${messageIndex}` }));
+        sender.send(JSON.stringify({ type: 'send_message', content }));
         const elapsed = await completion;
         latencies.push(elapsed);
       }
