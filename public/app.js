@@ -7,9 +7,9 @@ let reconnectAttempts = 0;
 let isLoggingOut = false;
 // FR-17: set on logout so a deliberate disconnect is never retried.
 let intentionalDisconnect = false;
-const MAX_RECONNECT_DELAY = 10000;
-// FR-17: Automatically retry dropped WebSocket connections and restore the previous room.
-const MAX_RECONNECT_ATTEMPTS = 5;
+// NR-04: retry automatically every 2 seconds until the network/server returns.
+// This avoids exhausting a finite retry budget during an outage lasting up to 30 seconds.
+const MAX_RECONNECT_DELAY = 2000;
 const RECONNECT_DELAY_MS = 1000;
 
 function updateConnectionState(state) {
@@ -36,12 +36,6 @@ function clearReconnectTimer() {
 function scheduleReconnect() {
   if (!currentUser || isLoggingOut || intentionalDisconnect || !sessionToken || reconnectTimer !== null) return;
 
-  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-    updateConnectionState('Disconnected');
-    showAlert('Connection lost. Please reload the page.', 'error');
-    return;
-  }
-
   updateConnectionState('Reconnecting');
   const delay = Math.min(RECONNECT_DELAY_MS * (2 ** reconnectAttempts), MAX_RECONNECT_DELAY);
   reconnectAttempts += 1;
@@ -50,6 +44,14 @@ function scheduleReconnect() {
     initWebSocket();
   }, delay);
 }
+
+// NR-04: a restored network should trigger an immediate retry instead of waiting for the timer.
+window.addEventListener('online', () => {
+  if (!currentUser || isLoggingOut || intentionalDisconnect || !sessionToken) return;
+  clearReconnectTimer();
+  reconnectAttempts = 0;
+  if (!socket || socket.readyState === WebSocket.CLOSED) initWebSocket();
+});
 
 function initWebSocket() {
   if (!currentUser || isLoggingOut) {
