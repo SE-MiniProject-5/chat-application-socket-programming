@@ -304,7 +304,11 @@ function messageKey(msg) {
 // FR-12: server sends an ISO timestamp; format it in this viewer's local timezone.
 function formatLocalTime(value) {
   if (!value) return '';
-  const date = new Date(value);
+  // SQLite CURRENT_TIMESTAMP history values are UTC but have no timezone suffix.
+  const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(String(value))
+    ? String(value).replace(' ', 'T') + 'Z'
+    : value;
+  const date = new Date(normalized);
   if (Number.isNaN(date.getTime())) return String(value);
   return new Intl.DateTimeFormat(undefined, {
     hour: '2-digit',
