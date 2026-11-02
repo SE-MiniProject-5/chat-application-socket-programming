@@ -677,3 +677,9 @@ async function handleLogin(event) {
 if (currentUser) {
   initWebSocket();
 }
+
+const messageInput = document.getElementById('message-input');
+if (messageInput) {
+  messageInput.addEventListener('input', handleMessageInput);
+  messageInput.addEventListener('blur', stopLocalTyping);
+}
