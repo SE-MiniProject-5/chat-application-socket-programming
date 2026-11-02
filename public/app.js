@@ -410,7 +410,8 @@ function appendMessage(msg) {
 async function handleSendMessage(event) {
   event.preventDefault();
   const input = document.getElementById('message-input');
-  stopLocalTyping();\n  const rawContent = input.value.trim();
+  stopLocalTyping();
+  const rawContent = input.value.trim();
 
   if (!rawContent) {
     showAlert('Message cannot be empty or whitespace-only.', 'error');
