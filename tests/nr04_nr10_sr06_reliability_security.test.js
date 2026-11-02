@@ -13,7 +13,7 @@ describe('NR-04: automatic reconnection', () => {
     assert.match(client, /initWebSocket\(\)/);
     assert.match(client, /const MAX_RECONNECT_ATTEMPTS = 5/);
     assert.match(client, /reconnectAttempts >= MAX_RECONNECT_ATTEMPTS/);
-    assert.match(client, /Connection lost\\. Please reload the page\\./);
+    assert.match(client, /Connection lost\. Please reload the page\./);
     assert.match(client, /reconnectTimer = setTimeout/);
   });
 
