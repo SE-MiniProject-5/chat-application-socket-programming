@@ -6,6 +6,7 @@ const { registerUser, loginUser } = require('./auth');
 const { createRoom, listRooms } = require('./rooms');
 const { ChatManager } = require('./chatManager');
 const { createSessionManager } = require('./sessionManager');
+const { createLoginAttemptLimiter } = require('./loginAttemptLimiter');
 
 let WebSocketServer;
 try {
@@ -24,6 +25,7 @@ function logServerError(context, err) {
 const db = createDatabase(process.env.DB_PATH || (process.env.NODE_ENV === 'test' ? ':memory:' : undefined));
 const chatManager = new ChatManager();
 // SEC-REQ-06: tokens last 24 h by default (SESSION_TTL_MS is only for tests/ops overrides).
+const loginAttemptLimiter = createLoginAttemptLimiter();
 const sessions = createSessionManager(
   process.env.SESSION_TTL_MS ? { ttlMs: Number(process.env.SESSION_TTL_MS) } : {}
 );
@@ -118,8 +120,26 @@ const requestHandler = async (req, res) => {
   if (url.pathname === '/api/login' && req.method === 'POST') {
     try {
       const data = await parseJsonBody(req);
+      const loginStatus = loginAttemptLimiter.getStatus(data.username);
+      if (loginStatus.locked) {
+        res.writeHead(429, {
+          'Content-Type': 'application/json',
+          'Retry-After': String(Math.ceil(loginStatus.retryAfterMs / 1000))
+        });
+        res.end(JSON.stringify({
+          success: false,
+          message: 'Too many failed login attempts. Please try again in 5 minutes.'
+        }));
+        return;
+      }
+
       const result = loginUser(db, data.username, data.password);
-      if (result.success) result.token = sessions.create(result.user.id);
+      if (result.success) {
+        loginAttemptLimiter.recordSuccess(data.username);
+        result.token = sessions.create(result.user.id);
+      } else {
+        loginAttemptLimiter.recordFailure(data.username);
+      }
 
       res.writeHead(result.success ? 200 : 401, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(result));
