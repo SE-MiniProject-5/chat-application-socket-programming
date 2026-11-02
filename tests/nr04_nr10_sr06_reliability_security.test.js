@@ -32,7 +32,7 @@ describe('NR-10: cross-browser compatibility baseline', () => {
 
   it('does not require browser-specific vendor-prefixed JavaScript APIs', () => {
     const client = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
-    assert.doesNotMatch(client, /webkit[A-Z]|moz[A-Z]|ms[A-Z]/);
+    assert.doesNotMatch(client, /\b(?:webkit|moz|ms)[A-Z]\w*\b/);
   });
 });
 
