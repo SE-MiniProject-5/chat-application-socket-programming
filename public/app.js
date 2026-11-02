@@ -614,7 +614,8 @@ async function handleLogin(event) {
       isLoggingOut = false;
       showAlert(`Welcome back, ${data.user.username}!`, 'success');
       initWebSocket();
-      // NR-02: show the room list immediately after successful authentication.\n      switchTab('rooms');
+      // NR-02: show the room list immediately after successful authentication.
+      switchTab('rooms');
     }
   } catch (error) {
     showAlert('Server connection error. Please try again.', 'error');
