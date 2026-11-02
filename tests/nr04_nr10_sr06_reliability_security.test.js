@@ -11,7 +11,10 @@ describe('NR-04: automatic reconnection', () => {
     assert.match(client, /window\.addEventListener\('online'/);
     assert.match(client, /clearReconnectTimer\(\)/);
     assert.match(client, /initWebSocket\(\)/);
-    assert.doesNotMatch(client, /MAX_RECONNECT_ATTEMPTS/);
+    assert.match(client, /const MAX_RECONNECT_ATTEMPTS = 5/);
+    assert.match(client, /reconnectAttempts >= MAX_RECONNECT_ATTEMPTS/);
+    assert.match(client, /Connection lost\\. Please reload the page\\./);
+    assert.match(client, /reconnectTimer = setTimeout/);
   });
 
   it('rejoins the previously selected room after a socket reconnects', () => {
