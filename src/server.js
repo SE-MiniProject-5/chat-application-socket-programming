@@ -368,9 +368,22 @@ if (WebSocketServer) {
 
   wss.on('connection', (ws) => {
     let currentRoomId = null;
+    let typingTimer = null;
+    let isTyping = false;
     const currentUser = ws.user;
     ws.isAlive = true;
     ws.on('pong', () => { ws.isAlive = true; });
+
+    function stopTyping() {
+      if (typingTimer) {
+        clearTimeout(typingTimer);
+        typingTimer = null;
+      }
+      if (isTyping && currentRoomId !== null) {
+        chatManager.broadcastTyping(currentRoomId, ws, currentUser.username, false);
+      }
+      isTyping = false;
+    }
     chatManager.registerOnlineUser(ws, currentUser);
 
     // FR-15: system notices are delivered to room peers, never echoed to the actor.
@@ -422,6 +435,7 @@ if (WebSocketServer) {
           // SEC-REQ-03: identity is always taken from the authenticated session.
           if (currentRoomId !== null && String(currentRoomId) !== String(requestedRoomId)) {
             const previousRoomId = currentRoomId;
+            stopTyping();
             chatManager.leaveRoom(ws, previousRoomId);
             notifyRoomPeers(previousRoomId, 'left');
             // FR-14: refresh the previous room's online-user list after a move.
@@ -443,6 +457,18 @@ if (WebSocketServer) {
 
           // FR-14: every join refreshes the joined room's online-user list.
           chatManager.broadcastPresence(currentRoomId);
+        } else if (data.type === 'typing') {
+          if (currentRoomId === null || !chatManager.isSocketInRoom(currentRoomId, ws)) return;
+          if (data.isTyping === false) {
+            stopTyping();
+            return;
+          }
+          if (!isTyping) {
+            isTyping = true;
+            chatManager.broadcastTyping(currentRoomId, ws, currentUser.username, true);
+          }
+          if (typingTimer) clearTimeout(typingTimer);
+          typingTimer = setTimeout(stopTyping, 3000);
         } else if (data.type === 'send_message') {
           if (!currentRoomId || !currentUser || !chatManager.isSocketInRoom(currentRoomId, ws)) {
             ws.send(JSON.stringify({ type: 'error', message: 'You must join the target room before sending messages' }));
@@ -480,6 +506,7 @@ if (WebSocketServer) {
         } else if (data.type === 'leave_room') {
           if (currentRoomId !== null) {
             const roomId = currentRoomId;
+            stopTyping();
             chatManager.leaveRoom(ws, roomId);
             notifyRoomPeers(roomId, 'left');
             // FR-14: leaving refreshes the list for remaining members.
@@ -500,6 +527,7 @@ if (WebSocketServer) {
     });
 
     ws.on('close', () => {
+      stopTyping();
       sessions.detachSocket(ws);
       chatManager.removeOnlineUser(ws);
       if (currentRoomId !== null) {

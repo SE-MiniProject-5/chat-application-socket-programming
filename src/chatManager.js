@@ -323,6 +323,22 @@ class ChatManager {
   }
 
   /**
+   * FR-22: Notify other members when a room participant starts or stops typing.
+   * The sender socket is excluded so the UI only shows other participants.
+   */
+  broadcastTyping(roomId, senderSocket, username, isTyping) {
+    const members = this.rooms.get(String(roomId));
+    if (!members) return { attempted: 0, delivered: 0, failed: 0 };
+    const targets = [...members.keys()].filter(socket => socket !== senderSocket);
+    return this.sendToSockets(targets, JSON.stringify({
+      type: 'typing',
+      roomId: Number(roomId),
+      username,
+      isTyping: Boolean(isTyping)
+    }));
+  }
+
+  /**
    * FR-14: Broadcast the current usernames in a room to every active member.
    * Keeping this in ChatManager ensures join/leave/disconnect presence updates
    * always use the same payload shape.
