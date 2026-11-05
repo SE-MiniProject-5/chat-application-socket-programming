@@ -35,9 +35,9 @@ class ChatManager {
    * Format timestamp as HH:MM per FR-12
    */
   formatTimestamp(date = new Date()) {
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${hours}:${minutes}`;
+    // FR-12: transmit an unambiguous server-generated instant; each browser
+    // formats it in its own local timezone.
+    return date.toISOString();
   }
 
   /**
@@ -320,6 +320,22 @@ class ChatManager {
       LIMIT ?
     `);
     return stmt.all(usernameA, usernameB, usernameB, usernameA, limit);
+  }
+
+  /**
+   * FR-22: Notify other members when a room participant starts or stops typing.
+   * The sender socket is excluded so the UI only shows other participants.
+   */
+  broadcastTyping(roomId, senderSocket, username, isTyping) {
+    const members = this.rooms.get(String(roomId));
+    if (!members) return { attempted: 0, delivered: 0, failed: 0 };
+    const targets = [...members.keys()].filter(socket => socket !== senderSocket);
+    return this.sendToSockets(targets, JSON.stringify({
+      type: 'typing',
+      roomId: Number(roomId),
+      username,
+      isTyping: Boolean(isTyping)
+    }));
   }
 
   /**
