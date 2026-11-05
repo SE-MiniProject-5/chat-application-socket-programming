@@ -4,12 +4,15 @@ let currentRoom = null;
 let socket = null;
 let reconnectTimer = null;
 let reconnectAttempts = 0;
+let reconnectNoticeShown = false;
+let typingStopTimer = null;
 let isLoggingOut = false;
 // FR-17: set on logout so a deliberate disconnect is never retried.
 let intentionalDisconnect = false;
-const MAX_RECONNECT_DELAY = 10000;
-// FR-17: Automatically retry dropped WebSocket connections and restore the previous room.
+// FR-17: notify after five consecutive failed reconnect attempts.
+// NR-04: keep retrying in the background; the notice does not stop recovery.
 const MAX_RECONNECT_ATTEMPTS = 5;
+const MAX_RECONNECT_DELAY = 2000;
 const RECONNECT_DELAY_MS = 1000;
 
 function updateConnectionState(state) {
@@ -36,19 +39,27 @@ function clearReconnectTimer() {
 function scheduleReconnect() {
   if (!currentUser || isLoggingOut || intentionalDisconnect || !sessionToken || reconnectTimer !== null) return;
 
-  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-    updateConnectionState('Disconnected');
-    showAlert('Connection lost. Please reload the page.', 'error');
-    return;
-  }
-
   updateConnectionState('Reconnecting');
   const delay = Math.min(RECONNECT_DELAY_MS * (2 ** reconnectAttempts), MAX_RECONNECT_DELAY);
   reconnectAttempts += 1;
+  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS && !reconnectNoticeShown) {
+    reconnectNoticeShown = true;
+    showAlert('Connection lost. Please reload the page.', 'error');
+  }
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
     initWebSocket();
   }, delay);
+}
+
+// NR-04: a restored network should trigger an immediate retry instead of waiting for the timer.
+if (typeof window.addEventListener === 'function') {
+  window.addEventListener('online', () => {
+    if (!currentUser || isLoggingOut || intentionalDisconnect || !sessionToken) return;
+    clearReconnectTimer();
+    reconnectAttempts = 0;
+    if (!socket || socket.readyState === WebSocket.CLOSED) initWebSocket();
+  });
 }
 
 function initWebSocket() {
@@ -79,6 +90,7 @@ function initWebSocket() {
       console.log('Connected to WebSocket server');
       // FR-17: A successful connection resets the retry counter.
       reconnectAttempts = 0;
+      reconnectNoticeShown = false;
       clearReconnectTimer();
 
       // FR-17: Rejoin the room that was active before the connection dropped.
@@ -98,8 +110,12 @@ function initWebSocket() {
         } else if (data.type === 'private_message') {
           // FR-23: Private message received
           appendMessage(data);
+        } else if (data.type === 'typing') {
+          updateTypingIndicator(data.username, data.isTyping);
         } else if (data.type === 'presence') {
           updateOnlineMembers(data.members);
+        } else if (data.type === 'system_notice') {
+          appendSystemNotice(data);
         } else if (data.type === 'room_joined') {
           updateOnlineMembers(data.members);
           renderMessageHistory(data.history);
@@ -256,6 +272,10 @@ function joinRoom(room, options = {}) {
 }
 
 function leaveCurrentRoom() {
+  stopLocalTyping();
+  typingUserTimers.forEach(timer => clearTimeout(timer));
+  typingUserTimers.clear();
+  renderTypingIndicator();
   // Leaving a room intentionally does not mean the WebSocket should reconnect.
   clearReconnectTimer();
   reconnectAttempts = 0;
@@ -264,6 +284,59 @@ function leaveCurrentRoom() {
   }
   currentRoom = null;
   switchTab('rooms');
+}
+
+// FR-22: Keep a short-lived list of other room members who are typing.
+const typingUserTimers = new Map();
+function updateTypingIndicator(username, isTyping) {
+  if (!username || (currentUser && username === currentUser.username)) return;
+  const indicator = document.getElementById('typing-indicator');
+  if (!indicator) return;
+  if (typingUserTimers.has(username)) {
+    clearTimeout(typingUserTimers.get(username));
+    typingUserTimers.delete(username);
+  }
+  if (isTyping) {
+    const timer = setTimeout(() => {
+      typingUserTimers.delete(username);
+      renderTypingIndicator();
+    }, 3000);
+    typingUserTimers.set(username, timer);
+  }
+  renderTypingIndicator();
+}
+
+function renderTypingIndicator() {
+  const indicator = document.getElementById('typing-indicator');
+  if (!indicator) return;
+  const names = [...typingUserTimers.keys()];
+  indicator.textContent = names.length === 0 ? '' : names.length === 1
+    ? `${names[0]} is typing…`
+    : `${names.join(', ')} are typing…`;
+  indicator.classList.toggle('hidden', names.length === 0);
+}
+
+function sendTypingStatus(isTyping) {
+  if (!currentRoom || !socket || socket.readyState !== WebSocket.OPEN) return;
+  socket.send(JSON.stringify({ type: 'typing', isTyping }));
+}
+
+function handleMessageInput() {
+  if (!currentRoom) return;
+  sendTypingStatus(true);
+  if (typingStopTimer) clearTimeout(typingStopTimer);
+  typingStopTimer = setTimeout(() => {
+    sendTypingStatus(false);
+    typingStopTimer = null;
+  }, 2500);
+}
+
+function stopLocalTyping() {
+  if (typingStopTimer) {
+    clearTimeout(typingStopTimer);
+    typingStopTimer = null;
+  }
+  sendTypingStatus(false);
 }
 
 // FR-14: render the server-provided usernames for the currently joined room.
@@ -297,6 +370,38 @@ function messageKey(msg) {
   const id = msg.id !== null && msg.id !== undefined ? msg.id : msg.seq;
   if (id === null || id === undefined) return null;
   return `${msg.isPrivate ? 'pm' : 'room'}:${id}`;
+}
+
+// FR-12: server sends an ISO timestamp; format it in this viewer's local timezone.
+function formatLocalTime(value) {
+  if (!value) return '';
+  // SQLite CURRENT_TIMESTAMP history values are UTC but have no timezone suffix.
+  const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(String(value))
+    ? String(value).replace(' ', 'T') + 'Z'
+    : value;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).format(date);
+}
+
+// FR-15: render join/leave announcements as text, not HTML.
+function appendSystemNotice(notice) {
+  const container = document.getElementById('messages-container');
+  const item = document.createElement('div');
+  item.className = 'message-item system-notice';
+  const message = document.createElement('div');
+  message.className = 'message-text';
+  message.textContent = String(notice.message || '');
+  const time = document.createElement('span');
+  time.className = 'message-time';
+  time.textContent = formatLocalTime(notice.timestamp);
+  item.append(message, time);
+  container.appendChild(item);
+  container.scrollTop = container.scrollHeight;
 }
 
 function appendMessage(msg) {
@@ -335,7 +440,7 @@ function appendMessage(msg) {
 
   const time = document.createElement('span');
   time.className = 'message-time';
-  time.textContent = String(msg.timestamp || '');
+  time.textContent = formatLocalTime(msg.timestamp || msg.createdAt || msg.created_at || '');
   meta.appendChild(time);
 
   const text = document.createElement('div');
@@ -350,6 +455,7 @@ function appendMessage(msg) {
 async function handleSendMessage(event) {
   event.preventDefault();
   const input = document.getElementById('message-input');
+  stopLocalTyping();
   const rawContent = input.value.trim();
 
   if (!rawContent) {
@@ -510,6 +616,7 @@ async function handleRegister(event) {
       sessionToken = data.token;
       intentionalDisconnect = false;
       reconnectAttempts = 0;
+      reconnectNoticeShown = false;
       sessionStorage.setItem('chat_user', JSON.stringify(currentUser));
       sessionStorage.setItem('chat_session_token', sessionToken);
       usernameInput.value = '';
@@ -614,7 +721,8 @@ async function handleLogin(event) {
       isLoggingOut = false;
       showAlert(`Welcome back, ${data.user.username}!`, 'success');
       initWebSocket();
-      setTimeout(() => switchTab('rooms'), 600);
+      // NR-02: show the room list immediately after successful authentication.
+      switchTab('rooms');
     }
   } catch (error) {
     showAlert('Server connection error. Please try again.', 'error');
@@ -623,4 +731,10 @@ async function handleLogin(event) {
 
 if (currentUser) {
   initWebSocket();
+}
+
+const messageInput = document.getElementById('message-input');
+if (messageInput) {
+  messageInput.addEventListener('input', handleMessageInput);
+  messageInput.addEventListener('blur', stopLocalTyping);
 }
