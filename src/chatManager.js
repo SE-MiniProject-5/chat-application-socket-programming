@@ -35,9 +35,9 @@ class ChatManager {
    * Format timestamp as HH:MM per FR-12
    */
   formatTimestamp(date = new Date()) {
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${hours}:${minutes}`;
+    // FR-12: transmit an unambiguous server-generated instant; each browser
+    // formats it in its own local timezone.
+    return date.toISOString();
   }
 
   /**
