@@ -64,3 +64,27 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the module map, setup guide
 Pull requests and pushes to `main` run the automated test suite using Node.js 22. A PR should have a passing Actions check before merge.
 
 The SQLite database is created locally and should not be committed. See `.gitignore` for generated files.
+## Project documentation
+
+See the `docs/` directory for the submitted project documentation and sprint artefacts.
+
+## Non-functional requirement load test (NR-01 / NR-07)
+
+The repository includes a real WebSocket load-test harness that starts an isolated local server, authenticates at least 20 WebSocket clients, distributes them across at least 5 rooms, and measures how long each room message takes to reach every connected member.
+
+Run it from the repository root after installing dependencies:
+
+```powershell
+npm run test:load
+```
+
+The test reports the percentage of messages delivered to every member within the 1,000 ms target and p50/p95/maximum observed latency. It exits with a failure if fewer than 95% meet the target or if a recipient does not receive a message. The test uses a temporary SQLite database and removes it after the run.
+
+Optional environment variables can increase the load:
+
+- `LOAD_USERS` (minimum 20; default 20)
+- `LOAD_ROOMS` (minimum 5; default 5)
+- `LOAD_MESSAGES_PER_ROOM` (default 20)
+- `LOAD_SLA_MS` (default 1000)
+
+Run this load test on the target LAN/server environment for acceptance evidence. A local loopback run is a repeatable engineering check, but does not by itself prove the LAN performance target.

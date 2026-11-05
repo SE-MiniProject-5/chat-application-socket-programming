@@ -402,3 +402,29 @@ input:focus {
   cursor: not-allowed;
   opacity: 0.5;
 }
+
+/* FR-15: room join/leave system notices */
+.system-notice {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  color: #8b949e;
+  font-size: 12px;
+  text-align: center;
+}
+.system-notice .message-text {
+  color: #8b949e;
+  font-style: italic;
+}
+
+/* FR-22: typing indicator */
+.typing-indicator {
+  display: block;
+  min-height: 16px;
+  margin-top: 4px;
+  color: #8b949e;
+  font-size: 11px;
+  font-style: italic;
+}
