@@ -4,13 +4,15 @@ let currentRoom = null;
 let socket = null;
 let reconnectTimer = null;
 let reconnectAttempts = 0;
+let reconnectNoticeShown = false;
 let typingStopTimer = null;
 let isLoggingOut = false;
 // FR-17: set on logout so a deliberate disconnect is never retried.
 let intentionalDisconnect = false;
-const MAX_RECONNECT_DELAY = 10000;
-// FR-17: Automatically retry dropped WebSocket connections and restore the previous room.
+// FR-17: notify after five consecutive failed reconnect attempts.
+// NR-04: keep retrying in the background; the notice does not stop recovery.
 const MAX_RECONNECT_ATTEMPTS = 5;
+const MAX_RECONNECT_DELAY = 2000;
 const RECONNECT_DELAY_MS = 1000;
 
 function updateConnectionState(state) {
@@ -37,19 +39,27 @@ function clearReconnectTimer() {
 function scheduleReconnect() {
   if (!currentUser || isLoggingOut || intentionalDisconnect || !sessionToken || reconnectTimer !== null) return;
 
-  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-    updateConnectionState('Disconnected');
-    showAlert('Connection lost. Please reload the page.', 'error');
-    return;
-  }
-
   updateConnectionState('Reconnecting');
   const delay = Math.min(RECONNECT_DELAY_MS * (2 ** reconnectAttempts), MAX_RECONNECT_DELAY);
   reconnectAttempts += 1;
+  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS && !reconnectNoticeShown) {
+    reconnectNoticeShown = true;
+    showAlert('Connection lost. Please reload the page.', 'error');
+  }
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
     initWebSocket();
   }, delay);
+}
+
+// NR-04: a restored network should trigger an immediate retry instead of waiting for the timer.
+if (typeof window.addEventListener === 'function') {
+  window.addEventListener('online', () => {
+    if (!currentUser || isLoggingOut || intentionalDisconnect || !sessionToken) return;
+    clearReconnectTimer();
+    reconnectAttempts = 0;
+    if (!socket || socket.readyState === WebSocket.CLOSED) initWebSocket();
+  });
 }
 
 function initWebSocket() {
@@ -80,6 +90,7 @@ function initWebSocket() {
       console.log('Connected to WebSocket server');
       // FR-17: A successful connection resets the retry counter.
       reconnectAttempts = 0;
+      reconnectNoticeShown = false;
       clearReconnectTimer();
 
       // FR-17: Rejoin the room that was active before the connection dropped.
@@ -605,6 +616,7 @@ async function handleRegister(event) {
       sessionToken = data.token;
       intentionalDisconnect = false;
       reconnectAttempts = 0;
+      reconnectNoticeShown = false;
       sessionStorage.setItem('chat_user', JSON.stringify(currentUser));
       sessionStorage.setItem('chat_session_token', sessionToken);
       usernameInput.value = '';
