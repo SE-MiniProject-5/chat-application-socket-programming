@@ -1,7 +1,7 @@
 # Performance Test Report
 ## Chat Application using Socket Programming and WebSockets
 
-**Document ID:** PTR-001 | **Version:** 1.1 | **Execution date:** 9 November 2026  
+**Document ID:** PTR-001 | **Version:** 1.2 | **Execution date:** 9 November 2026  
 **Evidence source:** Console output supplied by the project member. The assistant did not independently execute these tests.
 
 ## 1. Scope
@@ -59,18 +59,18 @@ The console outputs are present in the repository at:
 - [`docs/test-evidence/nfr01-nfr07-load-output.txt`](test-evidence/nfr01-nfr07-load-output.txt) — committed.
 - [`docs/test-evidence/nfr02-login-benchmark.txt`](test-evidence/nfr02-login-benchmark.txt) — committed.
 
-The repository also contains `docs/test-evidence/soak-test.txt`, but the captured file ends at approximately elapsed=8m and has no final JSON summary. It is an incomplete run and is not NFR-05 acceptance evidence. Save the full new 120-minute run as `docs/test-evidence/nfr05-soak-output.txt`. Do not include passwords, session tokens, or other credentials in evidence.
+The repository also contains `docs/test-evidence/soak-test.txt`, an earlier incomplete run of approximately 8 minutes. The completed 120-minute result is preserved separately in [`docs/test-evidence/nfr05-soak-output.txt`](test-evidence/nfr05-soak-output.txt). That file contains the exact final JSON summary and exit code supplied by the project member; periodic console lines were not supplied. No passwords, session tokens, or credentials are included.
 
 ## 5. Remaining performance validation
 - NFR-01: repeat/confirm on the intended LAN if final acceptance requires the SRS environment.
 - NFR-02: repeat/confirm on the intended LAN if final acceptance requires the SRS environment.
-- NFR-05: complete the full 120-minute soak test with 20 concurrent users and retain its output.
+- NFR-05: completed 120-minute run recorded below; preserve the harness limitations stated in Section 7.
 - NFR-06: conduct the five-person first-use usability check; source-level UI tests do not substitute for real users.
 - NFR-08: record the module review and timed clean setup.
 - NFR-10: record Chrome, Firefox, and Edge versions and actual browser results.
 
 ## 6. Conclusion
-The supplied outputs show successful local execution of the NFR-01/NFR-07 load test and NFR-02 login benchmark, both with exit code 0. These are useful measured results, with the localhost-versus-LAN limitation stated above. They do not establish completion of the remaining non-functional or manual validation requirements.
+The supplied outputs show successful local execution of NFR-01/NFR-07, NFR-02 and NFR-05 harness runs, each with exit code 0. NFR-05 completed 20 users for 120 minutes with 719 sent messages, 14,800 received WebSocket events and zero connection failures. These results are limited to what each local harness measures; NFR-01/NFR-02 remain localhost rather than LAN evidence. Other non-functional and manual validation requirements remain pending.
 
 
 ## 7. NFR-05 soak harness — measurement scope
@@ -81,7 +81,9 @@ The final summary reports configured users, elapsed duration, sent count, receiv
 
 **Important measurement limitation:** the harness uses one room and does not assert that every expected recipient received each message, verify message ordering/completeness, or apply a memory-growth threshold. It therefore provides an endurance/connection-stability observation for this local harness; it is not a separate multi-room delivery test, LAN test, or proof of bounded memory use. Keep the report wording aligned with these exact checks.
 
-**Acceptance execution:** use the default 120-minute run without setting `DURATION_MINUTES` to a shorter value. Preserve the complete terminal output and final JSON summary in `docs/test-evidence/nfr05-soak-output.txt`. Record the exit code. Until the full run is complete and its output reviewed, NFR-05 remains NOT RUN / pending evidence.
+**Completed run (9 November 2026; project-member supplied result):** 20 users; 120 minutes; 719 sent messages; 14,800 received WebSocket events; 0 connection failures; `passed: true`; process exit code 0. The exact final JSON and exit code are preserved in `docs/test-evidence/nfr05-soak-output.txt`. Periodic terminal lines were not supplied, so the repository records the supplied final summary rather than claiming a full raw terminal transcript.
+
+**Result:** NFR-05 passes the current harness's configured acceptance checks: at least 20 users, at least 120 minutes and zero connection failures. This does not establish more than the harness asserts. In particular, the harness uses one local room and does not assert per-recipient delivery/order or a memory-growth threshold.
 
 ## 8. NFR-06, NFR-08 and NFR-10 evidence distinction
 
@@ -90,3 +92,19 @@ The final summary reports configured users, elapsed duration, sent count, receiv
 - **NFR-10:** the reliability/security test checks use of standard browser APIs and absence of selected vendor-prefixed APIs. This is a source-level baseline, not proof that the app was executed in Chrome, Firefox and Edge. Record exact browser versions and actual workflow results.
 
 See `Final_Validation_Checklist.md` for the corresponding evidence forms and procedures.
+
+
+## 9. NFR-05 execution result and disposition
+
+| Measurement | Supplied result |
+|---|---:|
+| Concurrent authenticated users | 20 |
+| Duration | 120 minutes |
+| Messages sent | 719 |
+| WebSocket events received (aggregate) | 14,800 |
+| Connection failures | 0 |
+| Harness `passed` | true |
+| Process exit code | 0 |
+| Disposition | PASS for the current harness's checks |
+
+The result was supplied by the project member after the two-hour run. The final JSON and exit code are preserved in `docs/test-evidence/nfr05-soak-output.txt`. The periodic console log was not supplied. The PASS disposition is limited to the script's own pass condition and is not a claim of multi-room delivery, per-recipient completeness/order, LAN operation, or bounded memory growth.
