@@ -8,10 +8,10 @@
 
 | Area | Current evidence | Remaining action |
 |---|---|---|
-| Automated regression | 181 passed, 0 failed; 33 test files; exit code 0 | Retain raw output and confirm it is committed |
-| Source coverage | 74.88% statements/lines, 90.16% functions, 83.92% branches for `src/` | Retain c8 output and summary; confirm same source revision |
-| NFR-01 / NFR-07 | Localhost load run: 20 users, 5 rooms, 100/100 messages within 1 s | Run/confirm on target LAN if LAN acceptance is required; retain raw output |
-| NFR-02 | Localhost benchmark: 10 iterations, p95 398.95 ms | Run/confirm from a client on target LAN; retain raw output |
+| Automated regression | 181 passed, 0 failed; 33 test files; exit code 0 | Raw output and metadata are committed under `docs/test-evidence/` |
+| Source coverage | 74.88% statements/lines, 90.16% functions, 83.92% branches for `src/` | Output and summary are committed; resolve c8 version metadata mismatch (metadata says 1.0.0, lockfile pins 12.0.0) |
+| NFR-01 / NFR-07 | Localhost load run: 20 users, 5 rooms, 100/100 messages within 1 s | Raw output is committed; run/confirm on target LAN if LAN acceptance is required |
+| NFR-02 | Localhost benchmark: 10 iterations, p95 398.95 ms | Raw output is committed; run/confirm from a client on target LAN if required |
 | NFR-05 | Two-hour harness is available; no result yet | Complete full 120-minute run and retain output |
 | NFR-06 | Automated checks verify quick-start UI and default room | Conduct the five-person first-use study |
 | NFR-08 | Architecture/module map and setup instructions exist | Reviewer confirms module count and times a clean setup |
