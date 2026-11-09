@@ -1,7 +1,7 @@
 # Test Execution Report
 ## Chat Application using Socket Programming and WebSockets
 
-**Document ID:** TER-001 | **Version:** 2.2  
+**Document ID:** TER-001 | **Version:** 2.3  
 **Report updated:** 9 November 2026 | **Assignment testing window:** 2–6 November 2026
 
 ## 1. Purpose
@@ -115,3 +115,8 @@ The following are still pending actual execution evidence: the 120-minute NFR-05
 SEC-REQ-06 is explicitly asserted by the current automated tests for 256-bit token format/uniqueness, 24-hour expiry and immediate logout invalidation. FR-22 and FR-23 remain Optional in the approved SRS and outside committed scope.
 
 See `Final_Validation_Checklist.md` for the remaining evidence collection procedure and `Final_Demo_and_Deviations_Report.md` for the final recording/deviation register.
+
+
+## 10. NFR-05 two-hour soak result
+
+The project member supplied the completed `npm run test:soak` summary: 20 users, 120 minutes, 719 sent messages, 14,800 aggregate received WebSocket events, zero connection failures, `passed: true`, process exit code 0. This meets the current harness's configured pass condition and is recorded as PASS for that harness. The final JSON and exit code are committed in `docs/test-evidence/nfr05-soak-output.txt`; periodic terminal lines were not supplied. The test uses one local room and does not assert per-recipient delivery/order or memory-growth thresholds. It is not LAN evidence.
