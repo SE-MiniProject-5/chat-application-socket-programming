@@ -1,7 +1,7 @@
 # Test Plan
 ## Chat Application using Socket Programming and WebSockets
 
-**Document ID:** TP-001 | **Version:** 2.2 | **Status:** Automated results recorded; final manual/NFR evidence tracked separately  
+**Document ID:** TP-001 | **Version:** 2.3 | **Status:** Automated results and NFR-05 soak result recorded; remaining manual/NFR evidence tracked separately  
 **Assignment testing window:** 2–6 November 2026 | **Updated:** 9 November 2026
 
 ## 1. Purpose and scope
@@ -93,3 +93,8 @@ The working checklist and evidence tables are in `Final_Validation_Checklist.md`
 ## 13. Final submission artifacts
 
 The repository now includes a final validation checklist, a final demonstration/deviation report, and an evidence index in addition to the test and coverage reports. The committed HTML coverage report is available at `coverage/index.html`; raw console output and metadata are indexed in `docs/test-evidence/README.md`.
+
+
+## 14. NFR-05 soak execution update — 9 November 2026
+
+The project member supplied the completed result for `npm run test:soak`: 20 concurrent users, 120 minutes, 719 messages sent, 14,800 aggregate WebSocket events received, zero connection failures, `passed: true`, process exit code 0. The final JSON summary and exit code are preserved in `docs/test-evidence/nfr05-soak-output.txt`. NFR-05 is recorded as PASS for the current harness's checks. The harness uses one local room and does not assert per-recipient delivery/order or a memory-growth threshold; periodic console lines were not supplied. See `Performance_Test_Report.md`.
