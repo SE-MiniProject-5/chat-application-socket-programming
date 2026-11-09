@@ -101,3 +101,8 @@ Run this load test on the target LAN/server environment for acceptance evidence.
 ## Evidence index
 
 See [`docs/test-evidence/README.md`](docs/test-evidence/README.md) for the committed raw test outputs, metadata, and outstanding evidence files.
+
+
+### Latest NFR-05 result
+
+The completed 20-user / 120-minute soak result is recorded at [`docs/test-evidence/nfr05-soak-output.txt`](docs/test-evidence/nfr05-soak-output.txt). It reports 719 sent messages, 14,800 aggregate received WebSocket events, zero connection failures, `passed: true` and exit code 0. See the Performance Test Report for the harness limitations.
