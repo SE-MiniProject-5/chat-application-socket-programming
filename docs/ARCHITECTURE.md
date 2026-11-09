@@ -55,3 +55,22 @@ For a short development smoke run, set `DURATION_MINUTES=1`. A short run does no
 - Keep `chat.db` and generated soak databases out of version control.
 - The benchmark requires a pre-created test account; do not use a real user's password.
 - The soak test creates isolated temporary data and removes it on exit.
+
+
+## Source module inventory for NFR-08
+
+A static inventory of `src/` on the current main branch contains nine JavaScript files:
+
+| Module | Responsibility |
+|---|---|
+| `auth.js` | Registration and password authentication |
+| `chatManager.js` | Chat membership, presence and message handling |
+| `db.js` | SQLite schema and database access |
+| `loginAttemptLimiter.js` | Login-attempt throttling/lockout |
+| `rooms.js` | Room creation and listing |
+| `server.js` | HTTP/WebSocket application composition |
+| `sessionManager.js` | Session token creation, expiry and invalidation |
+| `tls.js` | HTTP/TLS server configuration |
+| `validation.js` | Shared input validation |
+
+This source inventory exceeds the SRS minimum of four modules. It is a repository-level inventory, not a substitute for independent reviewer sign-off. The clean-install/start procedure still needs to be timed against the 15-minute target before NFR-08 can be marked fully accepted.
