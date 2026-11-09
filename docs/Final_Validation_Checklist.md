@@ -14,7 +14,7 @@
 | NFR-02 | Localhost benchmark: 10 iterations, p95 398.95 ms | Raw output is committed; run/confirm from a client on target LAN if required |
 | NFR-05 | PASS for harness checks: 20 users, 120 minutes, 719 sent, 14,800 aggregate received events, 0 connection failures, exit 0 | Final JSON and exit code committed; periodic terminal lines not supplied. Harness is one local room and does not assert per-recipient delivery or memory threshold |
 | NFR-06 | Automated checks verify quick-start UI and default room | Conduct the five-person first-use study |
-| NFR-08 | Architecture/module map and setup instructions exist | Reviewer confirms module count and times a clean setup |
+| NFR-08 | Source inventory has 9 JavaScript modules under `src/` (minimum 4 met) | Independent reviewer sign-off and timed clean setup against 15-minute target remain pending |
 | NFR-10 | Automated test checks standard browser APIs and absence of vendor-prefixed APIs | Test in actual Chrome, Firefox and Edge versions |
 | SYS-01–SYS-14 | Manual protocol prepared; no manual results supplied | Execute and record each applicable scenario |
 | SEC-REQ-06 | Automated assertions cover 256-bit unique tokens, 24-hour expiry and immediate invalidation | No further claim needed; preserve passing test evidence |
