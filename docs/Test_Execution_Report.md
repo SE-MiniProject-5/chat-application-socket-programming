@@ -1,7 +1,7 @@
 # Test Execution Report
 ## Chat Application using Socket Programming and WebSockets
 
-**Document ID:** TER-001 | **Version:** 2.1  
+**Document ID:** TER-001 | **Version:** 2.2  
 **Report updated:** 9 November 2026 | **Assignment testing window:** 2–6 November 2026
 
 ## 1. Purpose
@@ -104,3 +104,14 @@ The project member reports saving the raw command output as:
 These raw files must be committed to the repository to make the evidence available to reviewers. The benchmark used a dedicated test account; credentials are intentionally excluded from this report and must not be committed.
 
 NFR-05's two-hour soak test and manual system/browser validation remain outstanding. No result is inferred for tests that have not been run.
+
+
+## 9. Final validation status
+
+The full automated result remains 181 passed and zero failures for the recorded run. The later localhost performance outputs for NFR-01/NFR-07 and NFR-02 are recorded in `Performance_Test_Report.md`; they do not establish LAN acceptance.
+
+The following are still pending actual execution evidence: the 120-minute NFR-05 run, five-person NFR-06 study, reviewer-led/timed NFR-08 check, actual Chrome/Firefox/Edge execution for NFR-10, manual SYS-01 through SYS-14, and any required FR-21 runtime fault injection. The exact measurement limitations of the existing automated checks are documented in the Traceability Matrix and Final Validation Checklist.
+
+SEC-REQ-06 is explicitly asserted by the current automated tests for 256-bit token format/uniqueness, 24-hour expiry and immediate logout invalidation. FR-22 and FR-23 remain Optional in the approved SRS and outside committed scope.
+
+See `Final_Validation_Checklist.md` for the remaining evidence collection procedure and `Final_Demo_and_Deviations_Report.md` for the final recording/deviation register.
