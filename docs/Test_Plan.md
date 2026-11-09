@@ -63,3 +63,12 @@ Manual system validation is distinct from automated tests. Performance threshold
 | Testing Lead | TBD | TBD | TBD |
 | Project Lead | TBD | TBD | TBD |
 | Faculty/Reviewer | TBD | TBD | TBD |
+
+
+## 11. Additional performance execution results (9 November 2026)
+
+The supplied local load-test output records 20 authenticated WebSocket users across five rooms. All 100 measured messages reached every member of their respective room within 1,000 ms (100.0%); p50 was 9.75 ms, p95 was 22.85 ms, and maximum was 38.13 ms. The script exited 0.
+
+The supplied login benchmark ran 10 iterations against `http://127.0.0.1:3000`. Average login-plus-room-list time was 188.77 ms, p50 153.72 ms, and p95 / maximum 398.95 ms; the script exited 0.
+
+These results satisfy the scripts' configured thresholds in the localhost environment. Since the SRS targets specify LAN conditions, repeat or confirm measurements on the intended LAN before final LAN acceptance. The two-hour NFR-05 soak test and manual browser validation remain pending. Raw output files should be committed under `docs/test-evidence/`; do not include test credentials.

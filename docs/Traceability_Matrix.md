@@ -45,13 +45,13 @@ The SRS identifies its numerical quality targets as proposed team targets (assum
 
 | SRS ID | SRS target / verification intent | Repository evidence or method | Status |
 |---|---|---|---|
-| NFR-01 | With 20 concurrent users on a LAN, at least 95% of messages appear on every recipient's screen within 1 second; verify using 100 messages and client send/receive times | `npm run test:load`; `scripts/nr01-nr07-load-test.js` | Harness exists. Actual target-environment result must be recorded; a localhost run is engineering evidence, not LAN acceptance |
-| NFR-02 | Login and room list complete within 2 seconds on a LAN; time 10 logins | `npm run benchmark:login`; `scripts/nr02-login-benchmark.js` | Harness exists. Record measured result and environment |
+| NFR-01 | With 20 concurrent users on a LAN, at least 95% of messages appear on every recipient's screen within 1 second; verify using 100 messages and client send/receive times | `npm run test:load`; `scripts/nr01-nr07-load-test.js` | **Local run PASS:** 100/100 (100%) within 1,000 ms; p50 9.75 ms, p95 22.85 ms, max 38.13 ms. Localhost only; LAN acceptance remains to be confirmed |
+| NFR-02 | Login and room list complete within 2 seconds on a LAN; time 10 logins | `npm run benchmark:login`; `scripts/nr02-login-benchmark.js` | **Local run PASS:** 10 iterations, p95 398.95 ms (average 188.77 ms); localhost only, LAN acceptance remains to be confirmed |
 | NFR-03 | 100% of accepted messages delivered once and in server-received order while clients remain connected | `nr03_delivery_completeness_order.test.js` | Automated suite included in reported passing run; preserve actual message count/output as evidence |
 | NFR-04 | If network is restored within 30 seconds of loss, reconnect within 10 seconds without user action | `fr17_automatic_reconnection.test.js`, `fr16_connection_state.test.js` | Automated coverage exists; manual network interruption timing remains to be recorded |
 | NFR-05 | Two hours of continuous operation with 20 users and no restart | `npm run test:soak`; `scripts/nr05-soak-test.js` | Harness exists. Two-hour run result is not yet evidenced in this report |
 | NFR-06 | At least 4 of 5 first-time users complete first use within 3 minutes | `nr06_first_use_success.test.js` | Automated suite exists; conduct and record the SRS's five-user usability check separately if the test is not a real-user study |
-| NFR-07 | 20 concurrent users across 5 rooms | `npm run test:load`; `scripts/nr01-nr07-load-test.js` | Harness exists. Record actual run settings and result |
+| NFR-07 | 20 concurrent users across 5 rooms | `npm run test:load`; `scripts/nr01-nr07-load-test.js` | **PASS in local load run:** 20 authenticated users across 5 rooms; 100 measured messages; script exit code 0 |
 | NFR-08 | At least 4 modules and setup achievable within 15 minutes | Code review of `src/`, README setup procedure | README documents setup; record reviewer, module count, and timed clean setup |
 | NFR-09 | All Must-priority SEC-REQ requirements met | `security_requirements.test.js`, `sr01_bcrypt_passwords.test.js`, `sr02_authenticated_sockets.test.js`, `sr03_server_assigned_sender.test.js`, `sr04_room_restricted_delivery.test.js`, `sr05_input_validation.test.js`, `sr08_tls.test.js` | Automated suites included in reported passing run; review each Must SEC-REQ mapping below |
 | NFR-10 | Browser support: Chrome, Firefox and Edge | SYS-14 manual browser/version execution | Not evidenced until tested and browser versions/results are recorded |
@@ -93,3 +93,7 @@ The supplied source coverage summary reports 74.88% statements/lines, 90.16% fun
 
 ## 7. Limitations
 This matrix is based on the approved SRS and the repository's current test inventory. The automated run result is based on evidence supplied by the project member. Non-functional and manual scenarios are not marked accepted unless their measurements or execution evidence are recorded. A test filename alone does not prove that every clause of its mapped requirement is asserted.
+
+
+### Performance evidence update — 9 November 2026
+The supplied load-test output supports a passing localhost run for NFR-01 and NFR-07: 20 authenticated users across five rooms; 100/100 messages reached all expected room members within 1 second (p50 9.75 ms, p95 22.85 ms, max 38.13 ms). The supplied login benchmark supports a passing localhost run for NFR-02: 10 iterations, average 188.77 ms and p95 398.95 ms against a 2,000 ms target. Both commands exited with code 0. The SRS target environment is a LAN, so these local results are not presented as LAN acceptance. Raw outputs are intended for `docs/test-evidence/nfr01-nfr07-load-output.txt` and `docs/test-evidence/nfr02-login-benchmark.txt`; commit those files to retain the evidence.
