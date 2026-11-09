@@ -99,3 +99,8 @@ For each row, replace the existing “Not recorded” value only after execution
 SYS-09 and SYS-10 exercise FR-22 and FR-23, which are Optional and outside committed scope in the approved SRS. Their implementation and automated tests do not make them Must requirements. SYS-14 must be supported by real browser execution; the automated NR-10 source-level baseline is not a substitute. SYS-07 timing must be observed during an actual network interruption; static reconnection-code checks are not a timing measurement.
 
 The detailed remaining work and NFR evidence protocol are in `Final_Validation_Checklist.md`. The final demo and deviation register are in `Final_Demo_and_Deviations_Report.md`.
+
+
+## 10. NFR-05 soak evidence cross-reference
+
+The two-hour endurance run is recorded separately in `Performance_Test_Report.md`: 20 concurrent users, 120 minutes, 719 sent messages, 14,800 aggregate received WebSocket events, zero connection failures, `passed: true`, exit code 0. This is a harness-level NFR-05 result, not a substitute for the browser-based SYS-01–SYS-14 scenarios. Those manual system scenarios remain NOT RUN until executed and evidenced.
