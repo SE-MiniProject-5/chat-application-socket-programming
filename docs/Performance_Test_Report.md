@@ -66,7 +66,7 @@ The repository also contains `docs/test-evidence/soak-test.txt`, an earlier inco
 - NFR-02: repeat/confirm on the intended LAN if final acceptance requires the SRS environment.
 - NFR-05: completed 120-minute run recorded below; preserve the harness limitations stated in Section 7.
 - NFR-06: conduct the five-person first-use usability check; source-level UI tests do not substitute for real users.
-- NFR-08: record the module review and timed clean setup.
+- NFR-08: source inventory has nine modules (minimum four met); independent reviewer sign-off and timed clean setup remain pending.
 - NFR-10: record Chrome, Firefox, and Edge versions and actual browser results.
 
 ## 6. Conclusion
