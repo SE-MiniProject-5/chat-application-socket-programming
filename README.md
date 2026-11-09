@@ -96,3 +96,8 @@ Run this load test on the target LAN/server environment for acceptance evidence.
 - [Final demonstration and deviation report](docs/Final_Demo_and_Deviations_Report.md) — suggested two-minute demo flow and SRS/SAD/Test Plan deviation register.
 - [System validation report](docs/System_Validation_Report.md) — SYS-01 through SYS-14 procedures and execution record.
 - [Performance test report](docs/Performance_Test_Report.md) — recorded local measurements and NFR-05 harness limitations.
+
+
+## Evidence index
+
+See [`docs/test-evidence/README.md`](docs/test-evidence/README.md) for the committed raw test outputs, metadata, and outstanding evidence files.
