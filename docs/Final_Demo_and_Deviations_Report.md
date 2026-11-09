@@ -59,7 +59,7 @@ Do not enter a deviation merely because a test has not yet been executed; record
 | Artifact | Repository path / URL | Status |
 |---|---|---|
 | Approved SRS | `docs/SRS_Chat_Application.pdf` | Baseline |
-| Software Architecture Design | Confirm exact repository filename | To verify |
+| Software Architecture Design | Repository baseline is `docs/SA&DS.docx` (confirm document title/section before citing) | To verify |
 | Test Plan | `docs/Test_Plan.md` | Updated |
 | Test Cases | `docs/Test_Cases.md` | Updated |
 | Test Execution Report | `docs/Test_Execution_Report.md` | Updated |
