@@ -101,16 +101,16 @@ The raw command output is committed as:
 - `docs/test-evidence/nfr01-nfr07-load-output.txt`
 - `docs/test-evidence/nfr02-login-benchmark.txt`
 
-Both raw output files are committed and available to reviewers. The benchmark used a dedicated test account; credentials are intentionally excluded from this report and must not be committed. An earlier `docs/test-evidence/soak-test.txt` is only an approximately 8-minute partial run with no final summary; it is not acceptance evidence for the 120-minute target.
+Both raw output files are committed and available to reviewers. The benchmark used a dedicated test account; credentials are intentionally excluded from this report and must not be committed. An earlier `docs/test-evidence/soak-test.txt` is only an approximately 8-minute partial run with no final summary. The completed 120-minute NFR-05 summary and exit code are recorded separately in `docs/test-evidence/nfr05-soak-output.txt`.
 
-NFR-05's two-hour soak test and manual system/browser validation remain outstanding. No result is inferred for tests that have not been run.
+The NFR-05 two-hour soak run is complete and recorded as PASS for the harness's configured checks. Manual system/browser validation remains outstanding. No result is inferred for tests that have not been run.
 
 
 ## 9. Final validation status
 
 The full automated result remains 181 passed and zero failures for the recorded run. The later localhost performance outputs for NFR-01/NFR-07 and NFR-02 are recorded in `Performance_Test_Report.md`; they do not establish LAN acceptance.
 
-The following are still pending actual execution evidence: the 120-minute NFR-05 run, five-person NFR-06 study, reviewer-led/timed NFR-08 check, actual Chrome/Firefox/Edge execution for NFR-10, manual SYS-01 through SYS-14, and any required FR-21 runtime fault injection. The exact measurement limitations of the existing automated checks are documented in the Traceability Matrix and Final Validation Checklist.
+The following are still pending actual execution evidence: the five-person NFR-06 study, NFR-08 timed clean setup/reviewer sign-off, actual Chrome/Firefox/Edge execution for NFR-10, manual SYS-01 through SYS-14, and any required FR-21 runtime fault injection. The exact measurement limitations of the existing automated checks are documented in the Traceability Matrix and Final Validation Checklist.
 
 SEC-REQ-06 is explicitly asserted by the current automated tests for 256-bit token format/uniqueness, 24-hour expiry and immediate logout invalidation. FR-22 and FR-23 remain Optional in the approved SRS and outside committed scope.
 
