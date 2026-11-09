@@ -1,7 +1,7 @@
 # Requirements Traceability Matrix
 ## Chat Application using Socket Programming and WebSockets
 
-**Document ID:** RTM-001 | **Version:** 3.1 | **Updated:** 9 November 2026  
+**Document ID:** RTM-001 | **Version:** 3.2 | **Updated:** 9 November 2026  
 **Source of requirement IDs and priorities:** Approved project SRS, version 1.0, Sections 3, 4, 7 and 8; Appendix A.
 
 ## 1. Purpose and status
@@ -49,7 +49,7 @@ The SRS identifies its numerical quality targets as proposed team targets (assum
 | NFR-02 | Login and room list complete within 2 seconds on a LAN; time 10 logins | `npm run benchmark:login`; `scripts/nr02-login-benchmark.js` | **Local run PASS:** 10 iterations, p95 398.95 ms (average 188.77 ms); localhost only, LAN acceptance remains to be confirmed |
 | NFR-03 | 100% of accepted messages delivered once and in server-received order while clients remain connected | `nr03_delivery_completeness_order.test.js` | Automated suite included in reported passing run; preserve actual message count/output as evidence |
 | NFR-04 | If network is restored within 30 seconds of loss, reconnect within 10 seconds without user action | `fr17_automatic_reconnection.test.js`, `fr16_connection_state.test.js` | Automated source-level checks cover bounded retries, online-event retry and room rejoin; actual outage/reconnect timing remains NOT RUN pending manual evidence |
-| NFR-05 | Two hours of continuous operation with 20 users and no restart | `npm run test:soak`; `scripts/nr05-soak-test.js` | Two-hour run NOT RUN / pending. Harness defaults to 20 users for 120 minutes on one local room; it logs sent/received-event counts, connection failures and RSS. It does not assert per-recipient delivery or a memory threshold; see Performance Test Report |
+| NFR-05 | Two hours of continuous operation with 20 users and no restart | `npm run test:soak`; `scripts/nr05-soak-test.js`; `docs/test-evidence/nfr05-soak-output.txt` | **PASS for harness checks:** 20 users, 120 minutes, 719 sent messages, 14,800 aggregate received events, 0 connection failures, `passed: true`, exit code 0. One local room; no per-recipient delivery/order or memory-threshold assertion. Final JSON supplied by project member; periodic raw lines not supplied |
 | NFR-06 | At least 4 of 5 first-time users complete first use within 3 minutes | `nr06_first_use_success.test.js` | Automated checks are source/UI assertions only. Five-person first-use study NOT RUN / pending; record completion time for each participant |
 | NFR-07 | 20 concurrent users across 5 rooms | `npm run test:load`; `scripts/nr01-nr07-load-test.js` | **PASS in local load run:** 20 authenticated users across 5 rooms; 100 measured messages; script exit code 0 |
 | NFR-08 | At least 4 modules and setup achievable within 15 minutes | Code review of `src/`, README setup procedure; `nr02_nr05_nr08_verification.test.js` | Static documentation/tooling checks pass in the reported automated run; independent module review and timed clean setup NOT RUN / pending |
@@ -82,7 +82,7 @@ The supplied source coverage summary reports 74.88% statements/lines, 90.16% fun
 
 1. Attach actual load-test output and record whether NFR-01 and NFR-07 targets were met under the intended LAN conditions.
 2. Attach the login benchmark output for NFR-02.
-3. Run and retain the complete two-hour soak output for NFR-05.
+3. NFR-05 two-hour run is complete and its supplied final summary is committed. The periodic console log was not supplied; harness limitations remain as stated.
 4. Record the five-user first-use study for NFR-06 if the automated test is not that study.
 5. Record the code-review checklist and timed clean setup for NFR-08.
 6. Record manual browser/version results for Chrome, Firefox and Edge for NFR-10 / SYS-14.
@@ -118,3 +118,7 @@ The current NFR-05 harness uses a single local room and does not verify per-reci
 The repository's `docs/test-evidence/` folder contains the full automated test output, test metadata, c8 output and JSON summary, load-test output, and login-benchmark output. The load and login evidence files are committed. The existing `soak-test.txt` ends at approximately elapsed=8m and contains no final summary; it is an incomplete run, not a 120-minute NFR-05 pass. The new full run should be saved separately as `nfr05-soak-output.txt`.
 
 The coverage metadata records source commit `6fb3749c690734ee2bca3a5a1cb1971ffa73c9ac` and reports c8 version `1.0.0`, while the repository lockfile pins c8 `12.0.0`. This version discrepancy must be reconciled against the original coverage environment before the tool version is represented as verified. Coverage percentages remain as recorded in the supplied coverage summary; see the Code Coverage and Branch Coverage Reports.
+
+
+### NFR-05 final execution result — 9 November 2026
+The project member supplied the completed two-hour run summary: 20 users, 120 minutes, 719 sent messages, 14,800 aggregate received WebSocket events, zero connection failures, `passed: true`, process exit code 0. This is recorded as PASS for the current harness's checks. The script uses one loopback room and does not assert per-recipient message delivery/order or memory-growth limits. See `docs/test-evidence/nfr05-soak-output.txt` and `Performance_Test_Report.md`. The full periodic terminal output was not supplied.
