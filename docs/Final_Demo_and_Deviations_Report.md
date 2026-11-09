@@ -64,11 +64,11 @@ Do not enter a deviation merely because a test has not yet been executed; record
 | Test Cases | `docs/Test_Cases.md` | Updated |
 | Test Execution Report | `docs/Test_Execution_Report.md` | Updated |
 | System Validation Report | `docs/System_Validation_Report.md` | Manual results pending |
-| Performance Test Report | `docs/Performance_Test_Report.md` | Partial; NFR-05 pending |
+| Performance Test Report | `docs/Performance_Test_Report.md` | NFR-05 harness PASS; NFR-01/NFR-02 localhost results; LAN confirmation may still be required |
 | Traceability Matrix | `docs/Traceability_Matrix.md` | Updated |
 | Video | To record | Pending |
 | Deviation approvals | To record | Pending |
 
 ## 7. Conclusion
 
-The automated test and local performance evidence are recorded in their respective reports. The final demonstration, manual system validation, outstanding NFR evidence and approved deviation review must be completed before final sign-off.
+The automated test results and local performance evidence, including the completed two-hour NFR-05 harness run, are recorded in their respective reports. The final demonstration video, manual system validation, remaining NFR evidence and approved deviation review must be completed before final sign-off.
