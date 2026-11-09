@@ -1,7 +1,7 @@
 # Test Plan
 ## Chat Application using Socket Programming and WebSockets
 
-**Document ID:** TP-001 | **Version:** 2.1 | **Status:** Updated with automated execution and coverage results  
+**Document ID:** TP-001 | **Version:** 2.2 | **Status:** Automated results recorded; final manual/NFR evidence tracked separately  
 **Assignment testing window:** 2–6 November 2026 | **Updated:** 9 November 2026
 
 ## 1. Purpose and scope
@@ -72,3 +72,19 @@ The supplied local load-test output records 20 authenticated WebSocket users acr
 The supplied login benchmark ran 10 iterations against `http://127.0.0.1:3000`. Average login-plus-room-list time was 188.77 ms, p50 153.72 ms, and p95 / maximum 398.95 ms; the script exited 0.
 
 These results satisfy the scripts' configured thresholds in the localhost environment. Since the SRS targets specify LAN conditions, repeat or confirm measurements on the intended LAN before final LAN acceptance. The two-hour NFR-05 soak test and manual browser validation remain pending. Raw output files should be committed under `docs/test-evidence/`; do not include test credentials.
+
+
+## 12. Final validation work remaining
+
+The following evidence items are not inferred from the automated suite and must be completed before final acceptance:
+
+1. Complete SYS-01 through SYS-14 using the execution steps in `System_Validation_Report.md`; retain labelled evidence.
+2. Complete the default 120-minute NFR-05 run with 20 users and retain the entire output. Report the soak harness's single-room/local limitations accurately.
+3. Conduct the NFR-06 first-use study with five first-time participants and record individual times; the existing automated test is not a substitute.
+4. Have a reviewer perform the NFR-08 module review and time a clean setup; existing source checks do not measure either activity.
+5. Execute SYS-14 in Chrome, Firefox and Edge, recording exact versions and results; existing NR-10 checks are source-level only.
+6. If required for SRS acceptance, repeat NFR-01/NFR-02 measurements from a client on the target LAN; the recorded values are localhost measurements.
+7. Perform controlled FR-21 fault injection only in an isolated test environment if runtime failure behaviour must be demonstrated.
+8. Complete the final demo and deviation register in `Final_Demo_and_Deviations_Report.md`.
+
+The working checklist and evidence tables are in `Final_Validation_Checklist.md`. Optional FR-22 and FR-23 remain outside committed Must scope. Use NOT RUN until actual evidence is recorded.
