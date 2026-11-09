@@ -44,7 +44,7 @@ The largest branch-coverage gaps are in `server.js` (18 uncovered branches), `ch
 A branch not executed is not automatically a defect. Review each uncovered path against the SRS and design; document any path that is intentionally environment-specific or infeasible to exercise in the current test environment.
 
 ## 6. Evidence
-The committed evidence includes `docs/test-evidence/coverage-summary.json`, `coverage-output.txt` and `coverage-metadata.txt`. The metadata records coverage source commit `6fb3749c690734ee2bca3a5a1cb1971ffa73c9ac` and c8 `1.0.0`, while `package-lock.json` pins c8 `12.0.0`. Reconcile this version discrepancy using the original coverage environment before claiming the exact runtime version. The separate automated test run metadata records commit `fda8aa45f62cb0a4cffeb60348f10e13decd9d75`; do not conflate the two source revisions.
+The committed evidence includes `docs/test-evidence/coverage-summary.json`, `docs/test-evidence/coverage-output.txt`, `docs/test-evidence/coverage-metadata.txt`, and the browsable HTML report at `coverage/index.html`. The metadata records coverage source commit `6fb3749c690734ee2bca3a5a1cb1971ffa73c9ac` and c8 `1.0.0`, while `package-lock.json` pins c8 `12.0.0`. Reconcile this version discrepancy using the original coverage environment before claiming the exact runtime version. The separate automated test run metadata records commit `fda8aa45f62cb0a4cffeb60348f10e13decd9d75`; do not conflate the two source revisions.
 
 ## 7. Limitations
 This report measures branches only in the configured `src/` scope. It does not establish browser-side branch coverage for `public/`, nor does it prove all SRS requirements have been tested.
