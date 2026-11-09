@@ -26,11 +26,10 @@ The `npm test` script in `package.json` invokes 33 named test files. The collect
 | Test files invoked | 33 |
 
 ## 4. Results
-<badge>PASS</badge>
+**Overall result: PASS**
 
 | Metric | Result |
 |---|---:|
-| Overall result | PASS |
 | Tests passed | 181 |
 | Tests failed | 0 |
 | Tests skipped | 0 |
