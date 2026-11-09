@@ -15,6 +15,7 @@ let port;
 let alice;
 let bob;
 let roomId;
+const activeSockets = new Set();
 
 const url = (token) =>
   `ws://127.0.0.1:${port}/` + (token === undefined ? '' : `?token=${encodeURIComponent(token)}`);
@@ -31,7 +32,11 @@ function connect(token) {
       const w = ws.waiters.shift();
       if (w) w(m); else ws.inbox.push(m);
     });
-    ws.on('open', () => resolve({ opened: true, ws }));
+    ws.on('open', () => {
+      activeSockets.add(ws);
+      ws.once('close', () => activeSockets.delete(ws));
+      resolve({ opened: true, ws });
+    });
     ws.on('unexpected-response', (_req, res) => resolve({ opened: false, status: res.statusCode }));
     ws.on('error', () => {});
   });
@@ -55,7 +60,18 @@ describe('SR-02: Authenticated socket connections only', () => {
     roomId = createRoom(db, 'Secure Room').room.id;
   });
 
-  after(() => new Promise((r) => { server.closeAllConnections?.(); server.close(r); }));
+  after(async () => {
+    // HTTP closeAllConnections() does not close upgraded WebSocket connections.
+    // Terminate every test client first so a failed assertion cannot leave the
+    // test worker alive indefinitely while server.close() waits for open sockets.
+    for (const ws of activeSockets) {
+      try { ws.terminate(); } catch {}
+    }
+    activeSockets.clear();
+    await new Promise((resolve, reject) => {
+      server.close((err) => err ? reject(err) : resolve());
+    });
+  });
 
   it('TC-SR02-01: refuses a connection with no token (401)', async () => {
     const r = await connect(undefined);
