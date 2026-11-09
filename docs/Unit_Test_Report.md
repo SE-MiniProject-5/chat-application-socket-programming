@@ -1,7 +1,7 @@
 # Unit Test Report
 ## Chat Application using Socket Programming and WebSockets
 
-**Document ID:** UTR-001 | **Version:** 1.1 | **Report date:** 9 November 2026  
+**Document ID:** UTR-001 | **Version:** 1.2 | **Report date:** 9 November 2026  
 **Status:** Automated test run completed successfully; manual system validation is tracked separately.
 
 ## 1. Objective
@@ -45,11 +45,11 @@ The test runner also printed Node.js's experimental SQLite warning. It did not c
 Registration, duplicate usernames, login/logout, room lifecycle, real-time and multi-user messaging, private messaging, history, delivery order/completeness, presence, timestamps, connection state, reconnection, typing indicator, safe errors, input validation, password hashing, authenticated sockets, sender identity, room-restricted delivery, login lockout, TLS, reliability, and performance-related verification.
 
 ## 6. Evidence
-The following run artifacts were captured from the project checkout:
-- `full-test-output.txt` — complete TAP output, including final totals.
-- `test-metadata.txt` — run date/time, commit SHA, Node.js/npm versions, and process exit code.
+The following run artifacts are committed under `docs/test-evidence/`:
+- [`full-test-output.txt`](test-evidence/full-test-output.txt) — complete TAP output, including final totals.
+- [`test-metadata.txt`](test-evidence/test-metadata.txt) — run date/time, commit SHA, Node.js/npm versions, and process exit code.
 
-Retain these unedited files under `docs/test-evidence/` in the repository.
+The files are retained unedited. The run's exact date, source commit, environment and exit code are recorded above.
 
 ## 7. Conclusion
 The recorded automated run passed all 181 tests across 39 suites with no failures, skips, or cancellations. This result applies to the recorded commit and environment. It does not replace manual browser/system validation or performance testing.
