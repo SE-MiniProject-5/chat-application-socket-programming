@@ -1,44 +1,60 @@
 # Code Coverage Report
 ## Chat Application using Socket Programming and WebSockets
 
-**Document ID:** CCR-001 | **Version:** 1.0 | **Report date:** 9 November 2026  
-**Status:** Measurement procedure prepared; percentages pending execution
+**Document ID:** CCR-001 | **Version:** 1.1 | **Report date:** 9 November 2026  
+**Status:** Coverage measured; source scope and limitations documented.
 
 ## 1. Objective
-Measure the proportion of executable source code exercised by automated tests. This report covers statement, line, and function coverage. Branch coverage is reported separately in `Branch_Coverage_Report.md`.
+Measure the proportion of executable source code exercised by automated tests. This report records statement, line, and function coverage. Branch coverage is detailed in `Branch_Coverage_Report.md`.
 
 ## 2. Tool and scope
-Use Istanbul c8 with the existing npm test command. Suggested scope is server-side JavaScript under `src/`; browser-side code under `public/` is not included unless explicitly instrumented/configured.
-
-Install c8 as a development dependency:
-```powershell
-npm install --save-dev c8
-``
-Run:
+Coverage was generated using c8/Istanbul with the project test command:
 ```powershell
 npx c8 --all --include=src --exclude=tests --reporter=text --reporter=html --reporter=json-summary npm test
-``
-This creates `coverage/`, including an HTML report and JSON summary. Verify the actual include/exclude scope before interpreting results.
+```
+The project manifest declares c8 as `^12.0.0`. The configured scope instruments JavaScript under `src/` and excludes `tests/`. Browser-side JavaScript under `public/` is not included.
 
-## 3. Results
-| Metric | Measured result |
-|---|---|
-| Statements | Pending c8 output |
-| Lines | Pending c8 output |
-| Functions | Pending c8 output |
-| Instrumented files | Pending c8 output |
-| Source scope | `src/**/*.js` (verify c8 output) |
-| Test command | `npm test` |
-| Commit SHA | Pending |
-| c8 version | Pending |
+## 3. Overall results
+<badge>Measured</badge>
 
-No coverage percentage is asserted until c8 has been run and its summary captured.
+| Metric | Covered | Total | Coverage |
+|---|---:|---:|---:|
+| Statements | 1,184 | 1,581 | 74.88% |
+| Lines | 1,184 | 1,581 | 74.88% |
+| Functions | 55 | 61 | 90.16% |
+| Branches | 235 | 280 | 83.92% |
 
-## 4. Evidence
-Retain terminal output, `coverage/coverage-summary.json`, `coverage/index.html` or zipped `coverage/`, commit SHA, and tool versions.
+The measurement includes 9 source files. A passing test suite and a coverage percentage are different measures: coverage records execution, not correctness or requirements completeness.
 
-## 5. Interpretation and limitations
-Coverage measures code execution, not correctness or requirements completeness. Review uncovered code to determine whether it represents untested functionality, defensive/error-handling code, or unreachable code. Do not increase coverage by deleting assertions or weakening tests.
+## 4. Per-file results
+| Source file | Line/statement coverage | Function coverage | Branch coverage |
+|---|---:|---:|---:|
+| `auth.js` | 91.53% | 100% | 81.57% |
+| `chatManager.js` | 99.01% | 100% | 86.84% |
+| `db.js` | 100% | 100% | 100% |
+| `loginAttemptLimiter.js` | 100% | 100% | 91.66% |
+| `rooms.js` | 100% | 100% | 100% |
+| `server.js` | 36.01% | 44.44% | 66.03% |
+| `sessionManager.js` | 98.46% | 92.30% | 88.23% |
+| `tls.js` | 73.58% | 100% | 73.33% |
+| `validation.js` | 100% | 100% | 100% |
 
-## 6. Conclusion
-The procedure is prepared. Populate measured values from c8 output and attach HTML/JSON evidence before submission.
+## 5. Analysis
+Overall line/statement coverage is 74.88%, function coverage is 90.16%, and branch coverage is 83.92%. The main area for improvement is `server.js`, with 36.01% line/statement coverage and 44.44% function coverage. `tls.js` has 73.58% line/statement coverage. The other modules range from 91.53% to 100% line/statement coverage.
+
+Recommended follow-up: inspect uncovered server routes, startup/shutdown paths, exceptional conditions, and TLS configuration paths. Add tests only where they verify meaningful behaviour; do not weaken assertions or remove code merely to raise the percentage.
+
+## 6. Evidence and reproducibility
+Retain the following artifacts from the same checkout:
+- c8 terminal output (`coverage-output.txt`);
+- `coverage/coverage-summary.json`;
+- `coverage/index.html` (or an archive of the generated `coverage/` directory);
+- source commit SHA and tool versions.
+
+The accompanying automated test metadata records commit `fda8aa45f62cb0a4cffeb60348f10e13decd9d75`, Node.js v22.20.0, and npm 10.9.3. Confirm that the coverage run used this same source checkout before treating that SHA as the coverage revision. The exact installed c8 patch version can be recorded with `npx c8 --version`.
+
+## 7. Interpretation and limitations
+Coverage measures code execution, not correctness, security assurance, or requirements completeness. The report covers only `src/`; it does not claim coverage for browser-side JavaScript in `public/`. Uncovered code may include untested functionality, defensive/error-handling paths, or environment-specific code and should be reviewed.
+
+## 8. Conclusion
+The measured overall coverage is 74.88% for statements/lines, 90.16% for functions, and 83.92% for branches across 9 files under `src/`. The server module is the largest opportunity for additional meaningful test coverage.
