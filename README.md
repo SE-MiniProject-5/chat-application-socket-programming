@@ -88,3 +88,11 @@ Optional environment variables can increase the load:
 - `LOAD_SLA_MS` (default 1000)
 
 Run this load test on the target LAN/server environment for acceptance evidence. A local loopback run is a repeatable engineering check, but does not by itself prove the LAN performance target.
+
+
+## Final validation and submission records
+
+- [Final validation and evidence checklist](docs/Final_Validation_Checklist.md) — outstanding manual, browser, usability, soak and security evidence.
+- [Final demonstration and deviation report](docs/Final_Demo_and_Deviations_Report.md) — suggested two-minute demo flow and SRS/SAD/Test Plan deviation register.
+- [System validation report](docs/System_Validation_Report.md) — SYS-01 through SYS-14 procedures and execution record.
+- [Performance test report](docs/Performance_Test_Report.md) — recorded local measurements and NFR-05 harness limitations.
