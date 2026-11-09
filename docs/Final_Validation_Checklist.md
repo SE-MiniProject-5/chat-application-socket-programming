@@ -12,7 +12,7 @@
 | Source coverage | 74.88% statements/lines, 90.16% functions, 83.92% branches for `src/` | Output and summary are committed; resolve c8 version metadata mismatch (metadata says 1.0.0, lockfile pins 12.0.0) |
 | NFR-01 / NFR-07 | Localhost load run: 20 users, 5 rooms, 100/100 messages within 1 s | Raw output is committed; run/confirm on target LAN if LAN acceptance is required |
 | NFR-02 | Localhost benchmark: 10 iterations, p95 398.95 ms | Raw output is committed; run/confirm from a client on target LAN if required |
-| NFR-05 | Two-hour harness is available; no result yet | Complete full 120-minute run and retain output |
+| NFR-05 | PASS for harness checks: 20 users, 120 minutes, 719 sent, 14,800 aggregate received events, 0 connection failures, exit 0 | Final JSON and exit code committed; periodic terminal lines not supplied. Harness is one local room and does not assert per-recipient delivery or memory threshold |
 | NFR-06 | Automated checks verify quick-start UI and default room | Conduct the five-person first-use study |
 | NFR-08 | Architecture/module map and setup instructions exist | Reviewer confirms module count and times a clean setup |
 | NFR-10 | Automated test checks standard browser APIs and absence of vendor-prefixed APIs | Test in actual Chrome, Firefox and Edge versions |
@@ -32,7 +32,7 @@
 
 ## 3. NFR-05 — two-hour endurance run
 
-The script defaults to 20 authenticated users and 120 minutes. It starts an isolated local server and temporary SQLite database, connects the clients, sends periodic messages, and logs elapsed time, sent count, received-event count, connection failures and process RSS.
+The script defaults to 20 authenticated users and 120 minutes. It starts an isolated local server and temporary SQLite database, connects the clients, sends periodic messages, and logs elapsed time, sent count, received-event count, connection failures and process RSS. The project member has now supplied the final two-hour summary: 20 users, 120 minutes, 719 sent messages, 14,800 received events, zero connection failures, `passed: true`, exit code 0.
 
 From PowerShell at the repository root:
 
@@ -42,7 +42,7 @@ npm run test:soak 2>&1 | Tee-Object docs\test-evidence\nfr05-soak-output.txt
 $LASTEXITCODE
 ```
 
-Let it finish naturally. Do not close the terminal, stop the process, or shorten `DURATION_MINUTES` for the acceptance run. The acceptance run must report approximately 120 minutes, at least 20 users, zero connection failures and `passed: true`, with process exit code 0.
+Let it finish naturally. Do not close the terminal, stop the process, or shorten `DURATION_MINUTES` for the acceptance run. The completed run met the harness checks: 120 minutes, 20 users, zero connection failures, `passed: true`, exit code 0. Its final JSON and exit code are recorded in `docs/test-evidence/nfr05-soak-output.txt`.
 
 **Harness limitation to preserve in the report:** the current soak script uses one local room and a loopback server. It records aggregate received WebSocket events and RSS snapshots, but does not assert per-recipient message completeness/order or define a memory-growth threshold. Therefore, describe exactly what this harness measured; do not claim it proves multi-room delivery correctness or LAN endurance.
 
