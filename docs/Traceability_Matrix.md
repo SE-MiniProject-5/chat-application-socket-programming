@@ -96,7 +96,7 @@ This matrix is based on the approved SRS and the repository's current test inven
 
 
 ### Performance evidence update — 9 November 2026
-The supplied load-test output supports a passing localhost run for NFR-01 and NFR-07: 20 authenticated users across five rooms; 100/100 messages reached all expected room members within 1 second (p50 9.75 ms, p95 22.85 ms, max 38.13 ms). The supplied login benchmark supports a passing localhost run for NFR-02: 10 iterations, average 188.77 ms and p95 398.95 ms against a 2,000 ms target. Both commands exited with code 0. The SRS target environment is a LAN, so these local results are not presented as LAN acceptance. Raw outputs are intended for `docs/test-evidence/nfr01-nfr07-load-output.txt` and `docs/test-evidence/nfr02-login-benchmark.txt`; commit those files to retain the evidence.
+The supplied load-test output supports a passing localhost run for NFR-01 and NFR-07: 20 authenticated users across five rooms; 100/100 messages reached all expected room members within 1 second (p50 9.75 ms, p95 22.85 ms, max 38.13 ms). The supplied login benchmark supports a passing localhost run for NFR-02: 10 iterations, average 188.77 ms and p95 398.95 ms against a 2,000 ms target. Both commands exited with code 0. The SRS target environment is a LAN, so these local results are not presented as LAN acceptance. Raw outputs are committed at `docs/test-evidence/nfr01-nfr07-load-output.txt` and `docs/test-evidence/nfr02-login-benchmark.txt`.
 
 
 ## 8. Verification-method clarification
@@ -111,3 +111,10 @@ Review of the current test source confirms the following distinctions:
 - FR-21 automated checks verify the generic safe error constant, selected source patterns and server-side logging. A controlled runtime fault-injection result remains separate evidence.
 
 The current NFR-05 harness uses a single local room and does not verify per-recipient delivery or memory thresholds. Its two-hour result remains pending until the complete 120-minute run is supplied and reviewed. See `Performance_Test_Report.md` and `Final_Validation_Checklist.md`.
+
+
+### Evidence repository reconciliation — 9 November 2026
+
+The repository's `docs/test-evidence/` folder contains the full automated test output, test metadata, c8 output and JSON summary, load-test output, and login-benchmark output. The load and login evidence files are committed. The existing `soak-test.txt` ends at approximately elapsed=8m and contains no final summary; it is an incomplete run, not a 120-minute NFR-05 pass. The new full run should be saved separately as `nfr05-soak-output.txt`.
+
+The coverage metadata records source commit `6fb3749c690734ee2bca3a5a1cb1971ffa73c9ac` and reports c8 version `1.0.0`, while the repository lockfile pins c8 `12.0.0`. This version discrepancy must be reconciled against the original coverage environment before the tool version is represented as verified. Coverage percentages remain as recorded in the supplied coverage summary; see the Code Coverage and Branch Coverage Reports.
