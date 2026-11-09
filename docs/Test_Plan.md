@@ -1,7 +1,7 @@
 # Test Plan
 ## Chat Application using Socket Programming and WebSockets
 
-**Document ID:** TP-001 | **Version:** 2.0 | **Status:** Updated for final testing  
+**Document ID:** TP-001 | **Version:** 2.1 | **Status:** Updated with automated execution and coverage results  
 **Assignment testing window:** 2–6 November 2026 | **Updated:** 9 November 2026
 
 ## 1. Purpose and scope
@@ -9,19 +9,29 @@ This plan defines testing of the implemented chat application: Node.js server, S
 
 ## 2. Test approach
 - **Automated unit/integration tests:** Node.js built-in test runner via `npm test`; the exact files are listed in `package.json`.
-- **System validation:** End-to-end workflows using at least two independent browser sessions. Record actual results, browser versions, dates, and evidence.
+- **System validation:** End-to-end workflows using at least two independent browser sessions. Record actual results, browser versions, dates, and evidence. These manual scenarios remain NOT RUN until executed and recorded.
 - **Security validation:** Invalid credentials, duplicate registration, token/session validation, sender spoofing, room isolation, malformed input, login lockout, and transport-security behaviour.
 - **Performance/reliability:** Use `npm run test:load`, `npm run benchmark:login`, and `npm run test:soak` only after reviewing workload and duration. Record actual settings and output.
 - **Coverage:** Use c8 to measure statement, line, function, and branch coverage. Coverage is not proof of requirements completeness.
 
 ## 3. Test environment
-Record actual OS, Node.js/npm versions, browser/version, test commit SHA, and whether execution was local or GitHub Actions. Commands:
+The recorded automated run used:
+| Item | Recorded value |
+|---|---|
+| OS/shell | Windows PowerShell |
+| Node.js | v22.20.0 |
+| npm | 10.9.3 |
+| Database | SQLite |
+| Test command | `npm test` |
+| Source commit | `fda8aa45f62cb0a4cffeb60348f10e13decd9d75` |
+| Run date/time | 9 November 2026, 19:19:24 (+05:30) |
+
+Record actual browser names/versions and the exact installed dependency versions when completing manual system validation. Commands:
 ```powershell
 node --version
 npm --version
 npm ls --depth=0
 ```
-The project uses Node.js, SQLite, `ws`, and `bcryptjs`; exact installed versions must be captured from the run environment.
 
 ## 4. Test data and controls
 Use dedicated test accounts and non-production data. Do not use real passwords or personal data. Reset/isolate the database where required. Never commit passwords, session tokens, or secrets in logs/screenshots.
@@ -33,16 +43,21 @@ Use dedicated test accounts and non-production data. Do not use real passwords o
 
 A test is PASS only when observed results meet expected results. Do not infer coverage percentages or manual test outcomes.
 
-## 6. Schedule
-The assignment specifies 2–6 November 2026. If tests actually occurred then, attach contemporaneous evidence. Tests performed after 6 November must be recorded with their real dates and must not be backdated.
+## 6. Recorded automated result
+The supplied full test output records 181 passed tests, 0 failed, 0 skipped, 0 cancelled, across 39 suites. The process exited with code 0 and reported a duration of 32.13 seconds. See `Unit_Test_Report.md` and `Test_Execution_Report.md`.
 
-## 7. Deliverables
+The c8 measurement for `src/` reports 74.88% statement/line coverage, 90.16% function coverage, and 83.92% branch coverage. See `Code_Coverage_Report.md` and `Branch_Coverage_Report.md`.
+
+## 7. Schedule
+The assignment specifies 2–6 November 2026. The supplied successful automated run occurred on 9 November 2026. It is recorded with its actual date and is not represented as having occurred within the assignment testing window. Any earlier execution must be supported by contemporaneous evidence.
+
+## 8. Deliverables
 Updated Test Plan, Test Cases, Traceability Matrix, Test Execution Report, Unit Test Report, System Validation Report, Code Coverage Report, Branch Coverage Report, and supporting test output/screenshots/coverage artifacts.
 
-## 8. Risks and limitations
-Manual system validation is distinct from automated tests. Performance thresholds must come from the approved SRS. Browser compatibility requires actual browser evidence. Coverage depends on the exact source revision and test command. Unexecuted tests must be marked NOT RUN.
+## 9. Risks and limitations
+Manual system validation is distinct from automated tests. Performance thresholds must come from the approved SRS. Browser compatibility requires actual browser evidence. Coverage depends on the exact source revision and test command. The current coverage scope excludes browser code under `public/`. Unexecuted tests must be marked NOT RUN.
 
-## 9. Approval
+## 10. Approval
 | Role | Name | Signature | Date |
 |---|---|---|---|
 | Testing Lead | TBD | TBD | TBD |
