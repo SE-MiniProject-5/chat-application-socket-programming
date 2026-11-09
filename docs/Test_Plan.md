@@ -88,3 +88,8 @@ The following evidence items are not inferred from the automated suite and must 
 8. Complete the final demo and deviation register in `Final_Demo_and_Deviations_Report.md`.
 
 The working checklist and evidence tables are in `Final_Validation_Checklist.md`. Optional FR-22 and FR-23 remain outside committed Must scope. Use NOT RUN until actual evidence is recorded.
+
+
+## 13. Final submission artifacts
+
+The repository now includes a final validation checklist, a final demonstration/deviation report, and an evidence index in addition to the test and coverage reports. The committed HTML coverage report is available at `coverage/index.html`; raw console output and metadata are indexed in `docs/test-evidence/README.md`.
