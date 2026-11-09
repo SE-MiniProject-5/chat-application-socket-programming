@@ -43,11 +43,11 @@ Overall line/statement coverage is 74.88%, function coverage is 90.16%, and bran
 Recommended follow-up: inspect uncovered server routes, startup/shutdown paths, exceptional conditions, and TLS configuration paths. Add tests only where they verify meaningful behaviour; do not weaken assertions or remove code merely to raise the percentage.
 
 ## 6. Evidence and reproducibility
-Retain the following artifacts from the same checkout:
-- c8 terminal output (`coverage-output.txt`);
-- `coverage/coverage-summary.json`;
-- `coverage/index.html` (or an archive of the generated `coverage/` directory);
-- source commit SHA and tool versions.
+The following artifacts are committed in the repository:
+- `docs/test-evidence/coverage-output.txt` — c8 terminal output;
+- `docs/test-evidence/coverage-summary.json` and `coverage/coverage-summary.json` — machine-readable summary;
+- `coverage/index.html` and per-file HTML reports — browsable HTML coverage report;
+- `docs/test-evidence/coverage-metadata.txt` — recorded source revision and tool metadata (with the c8 version discrepancy noted below).
 
 The committed `docs/test-evidence/coverage-metadata.txt` records coverage date 9 November 2026 19:50:38 (+05:30), source commit `6fb3749c690734ee2bca3a5a1cb1971ffa73c9ac`, and c8 version `1.0.0`. However, `package-lock.json` pins c8 `12.0.0`. This is an evidence metadata discrepancy: verify the original environment (for example, `npm ls c8` and `npx c8 --version` from the exact coverage checkout) before treating either version as the actual runtime version. Do not silently change the raw metadata file. The coverage revision recorded in the metadata is `6fb3749c690734ee2bca3a5a1cb1971ffa73c9ac`; the separate full-test run was on `fda8aa45f62cb0a4cffeb60348f10e13decd9d75`.
 
