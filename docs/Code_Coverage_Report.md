@@ -1,7 +1,7 @@
 # Code Coverage Report
 ## Chat Application using Socket Programming and WebSockets
 
-**Document ID:** CCR-001 | **Version:** 1.1 | **Report date:** 9 November 2026  
+**Document ID:** CCR-001 | **Version:** 1.2 | **Report date:** 9 November 2026  
 **Status:** Coverage measured; source scope and limitations documented.
 
 ## 1. Objective
@@ -49,7 +49,7 @@ Retain the following artifacts from the same checkout:
 - `coverage/index.html` (or an archive of the generated `coverage/` directory);
 - source commit SHA and tool versions.
 
-The accompanying automated test metadata records commit `fda8aa45f62cb0a4cffeb60348f10e13decd9d75`, Node.js v22.20.0, and npm 10.9.3. Confirm that the coverage run used this same source checkout before treating that SHA as the coverage revision. The exact installed c8 patch version can be recorded with `npx c8 --version`.
+The committed `docs/test-evidence/coverage-metadata.txt` records coverage date 9 November 2026 19:50:38 (+05:30), source commit `6fb3749c690734ee2bca3a5a1cb1971ffa73c9ac`, and c8 version `1.0.0`. However, `package-lock.json` pins c8 `12.0.0`. This is an evidence metadata discrepancy: verify the original environment (for example, `npm ls c8` and `npx c8 --version` from the exact coverage checkout) before treating either version as the actual runtime version. Do not silently change the raw metadata file. The coverage revision recorded in the metadata is `6fb3749c690734ee2bca3a5a1cb1971ffa73c9ac`; the separate full-test run was on `fda8aa45f62cb0a4cffeb60348f10e13decd9d75`.
 
 ## 7. Interpretation and limitations
 Coverage measures code execution, not correctness, security assurance, or requirements completeness. The report covers only `src/`; it does not claim coverage for browser-side JavaScript in `public/`. Uncovered code may include untested functionality, defensive/error-handling paths, or environment-specific code and should be reviewed.
