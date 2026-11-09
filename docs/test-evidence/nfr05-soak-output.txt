@@ -1,0 +1,21 @@
+NR-05 two-hour soak test — final summary supplied by project member
+Run date: 9 November 2026
+Command: npm run test:soak
+Configured target: 20 concurrent users for 120 minutes
+
+Final JSON summary:
+{
+  "target": "20 concurrent users for 120 minutes",
+  "users": 20,
+  "durationMinutes": 120,
+  "sentMessages": 719,
+  "receivedEvents": 14800,
+  "connectionFailures": 0,
+  "passed": true
+}
+
+Process exit code: 0
+
+Evidence provenance: The final JSON summary and exit code above were pasted by the project member after the run completed. Periodic per-minute console lines and an independent raw terminal capture were not supplied in this chat. This file therefore preserves the exact final summary and exit code, not a fabricated full terminal transcript.
+
+Harness scope: one loopback server, one room, aggregate WebSocket event count; no per-recipient delivery/order assertion or memory-growth threshold.
