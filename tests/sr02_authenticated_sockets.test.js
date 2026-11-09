@@ -1,7 +1,7 @@
 // SR-02 / SEC-REQ-02: refuse every socket connection without a valid, unexpired session token,
 // and process no chat event from an unauthenticated connection.
 process.env.DB_PATH = ':memory:';
-process.env.SESSION_TTL_MS = '1500'; // short-lived tokens so expiry can be exercised
+// Use the production session lifetime; expiry cases advance the stored expiry explicitly.
 
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
@@ -81,7 +81,7 @@ describe('SR-02: Authenticated socket connections only', () => {
 
   it('TC-SR02-04: refuses an expired token', async () => {
     const token = sessions.create(alice.id);
-    await new Promise((r) => setTimeout(r, 1600));
+    sessions.getSession(token).expiresAt = Date.now() - 1;
     const r = await connect(token);
     assert.equal(r.opened, false);
     assert.equal(r.status, 401);
@@ -134,7 +134,8 @@ describe('SR-02: Authenticated socket connections only', () => {
     await nextMessage(ws);
 
     const closing = closed(ws);
-    await new Promise((r) => setTimeout(r, 1600)); // token now expired
+    // Expire deterministically instead of relying on a short wall-clock TTL under CI load.
+    sessions.getSession(token).expiresAt = Date.now() - 1;
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'send_message', content: 'should be dropped' }));
     }
