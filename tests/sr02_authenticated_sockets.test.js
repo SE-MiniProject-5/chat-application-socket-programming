@@ -49,6 +49,25 @@ const nextMessage = (ws, ms = 1000) =>
     ws.waiters.push((m) => { clearTimeout(t); resolve(m); });
   });
 
+// Ignore unrelated queued frames (for example, presence/system notices) when
+// a test is specifically waiting for a chat event.
+async function nextMessageOfType(ws, type, ms = 1000) {
+  const deadline = Date.now() + ms;
+  while (Date.now() < deadline) {
+    const message = await nextMessage(ws, Math.max(1, deadline - Date.now()));
+    if (message.type === type) return message;
+  }
+  throw new Error(`timeout waiting for ${type} message`);
+}
+
+function closeSocket(ws) {
+  if (ws.readyState === WebSocket.CLOSED) return Promise.resolve();
+  return new Promise((resolve) => {
+    ws.once('close', resolve);
+    if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) ws.close();
+  });
+}
+
 const closed = (ws) => new Promise((resolve) => ws.once('close', (code, reason) => resolve({ code, reason: reason.toString() })));
 
 describe('SR-02: Authenticated socket connections only', () => {
@@ -116,15 +135,14 @@ describe('SR-02: Authenticated socket connections only', () => {
     assert.equal(opened, true);
 
     ws.send(JSON.stringify({ type: 'join_room', roomId }));
-    const joined = await nextMessage(ws);
+    const joined = await nextMessageOfType(ws, 'room_joined');
     assert.equal(joined.type, 'room_joined');
-    await nextMessage(ws); // presence
+    await nextMessageOfType(ws, 'presence');
 
     ws.send(JSON.stringify({ type: 'send_message', content: 'hello' }));
-    const msg = await nextMessage(ws);
-    assert.equal(msg.type, 'chat_message');
+    const msg = await nextMessageOfType(ws, 'chat_message');
     assert.equal(msg.sender, 'Alice');
-    ws.close();
+    await closeSocket(ws);
   });
 
   it('TC-SR02-07: identity comes from the token - a spoofed user in the payload is ignored', async () => {
@@ -132,13 +150,13 @@ describe('SR-02: Authenticated socket connections only', () => {
     const { ws } = await connect(token);
 
     ws.send(JSON.stringify({ type: 'join_room', roomId, user: { id: bob.id, username: 'Bob' } }));
-    await nextMessage(ws); // room_joined
-    await nextMessage(ws); // presence
+    await nextMessageOfType(ws, 'room_joined');
+    await nextMessageOfType(ws, 'presence');
     ws.send(JSON.stringify({ type: 'send_message', content: 'who am i' }));
-    const msg = await nextMessage(ws);
+    const msg = await nextMessageOfType(ws, 'chat_message');
     assert.equal(msg.sender, 'Alice');
     assert.equal(msg.userId, alice.id);
-    ws.close();
+    await closeSocket(ws);
   });
 
   it('TC-SR02-08: a session that expires mid-connection is closed and its chat events are not processed', async () => {
@@ -146,8 +164,8 @@ describe('SR-02: Authenticated socket connections only', () => {
     const token = sessions.create(bob.id);
     const { ws } = await connect(token);
     ws.send(JSON.stringify({ type: 'join_room', roomId }));
-    await nextMessage(ws);
-    await nextMessage(ws);
+    await nextMessageOfType(ws, 'room_joined');
+    await nextMessageOfType(ws, 'presence');
 
     const closing = closed(ws);
     // Expire deterministically instead of relying on a short wall-clock TTL under CI load.
