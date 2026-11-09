@@ -1,7 +1,7 @@
 # Requirements Traceability Matrix
 ## Chat Application using Socket Programming and WebSockets
 
-**Document ID:** RTM-001 | **Version:** 3.0 | **Updated:** 9 November 2026  
+**Document ID:** RTM-001 | **Version:** 3.1 | **Updated:** 9 November 2026  
 **Source of requirement IDs and priorities:** Approved project SRS, version 1.0, Sections 3, 4, 7 and 8; Appendix A.
 
 ## 1. Purpose and status
@@ -48,13 +48,13 @@ The SRS identifies its numerical quality targets as proposed team targets (assum
 | NFR-01 | With 20 concurrent users on a LAN, at least 95% of messages appear on every recipient's screen within 1 second; verify using 100 messages and client send/receive times | `npm run test:load`; `scripts/nr01-nr07-load-test.js` | **Local run PASS:** 100/100 (100%) within 1,000 ms; p50 9.75 ms, p95 22.85 ms, max 38.13 ms. Localhost only; LAN acceptance remains to be confirmed |
 | NFR-02 | Login and room list complete within 2 seconds on a LAN; time 10 logins | `npm run benchmark:login`; `scripts/nr02-login-benchmark.js` | **Local run PASS:** 10 iterations, p95 398.95 ms (average 188.77 ms); localhost only, LAN acceptance remains to be confirmed |
 | NFR-03 | 100% of accepted messages delivered once and in server-received order while clients remain connected | `nr03_delivery_completeness_order.test.js` | Automated suite included in reported passing run; preserve actual message count/output as evidence |
-| NFR-04 | If network is restored within 30 seconds of loss, reconnect within 10 seconds without user action | `fr17_automatic_reconnection.test.js`, `fr16_connection_state.test.js` | Automated coverage exists; manual network interruption timing remains to be recorded |
-| NFR-05 | Two hours of continuous operation with 20 users and no restart | `npm run test:soak`; `scripts/nr05-soak-test.js` | Harness exists. Two-hour run result is not yet evidenced in this report |
-| NFR-06 | At least 4 of 5 first-time users complete first use within 3 minutes | `nr06_first_use_success.test.js` | Automated suite exists; conduct and record the SRS's five-user usability check separately if the test is not a real-user study |
+| NFR-04 | If network is restored within 30 seconds of loss, reconnect within 10 seconds without user action | `fr17_automatic_reconnection.test.js`, `fr16_connection_state.test.js` | Automated source-level checks cover bounded retries, online-event retry and room rejoin; actual outage/reconnect timing remains NOT RUN pending manual evidence |
+| NFR-05 | Two hours of continuous operation with 20 users and no restart | `npm run test:soak`; `scripts/nr05-soak-test.js` | Two-hour run NOT RUN / pending. Harness defaults to 20 users for 120 minutes on one local room; it logs sent/received-event counts, connection failures and RSS. It does not assert per-recipient delivery or a memory threshold; see Performance Test Report |
+| NFR-06 | At least 4 of 5 first-time users complete first use within 3 minutes | `nr06_first_use_success.test.js` | Automated checks are source/UI assertions only. Five-person first-use study NOT RUN / pending; record completion time for each participant |
 | NFR-07 | 20 concurrent users across 5 rooms | `npm run test:load`; `scripts/nr01-nr07-load-test.js` | **PASS in local load run:** 20 authenticated users across 5 rooms; 100 measured messages; script exit code 0 |
-| NFR-08 | At least 4 modules and setup achievable within 15 minutes | Code review of `src/`, README setup procedure | README documents setup; record reviewer, module count, and timed clean setup |
+| NFR-08 | At least 4 modules and setup achievable within 15 minutes | Code review of `src/`, README setup procedure; `nr02_nr05_nr08_verification.test.js` | Static documentation/tooling checks pass in the reported automated run; independent module review and timed clean setup NOT RUN / pending |
 | NFR-09 | All Must-priority SEC-REQ requirements met | `security_requirements.test.js`, `sr01_bcrypt_passwords.test.js`, `sr02_authenticated_sockets.test.js`, `sr03_server_assigned_sender.test.js`, `sr04_room_restricted_delivery.test.js`, `sr05_input_validation.test.js`, `sr08_tls.test.js` | Automated suites included in reported passing run; review each Must SEC-REQ mapping below |
-| NFR-10 | Browser support: Chrome, Firefox and Edge | SYS-14 manual browser/version execution | Not evidenced until tested and browser versions/results are recorded |
+| NFR-10 | Browser support: Chrome, Firefox and Edge | SYS-14 manual browser/version execution; source-level baseline in `nr04_nr10_sr06_reliability_security.test.js` | Source-level standard-API checks included in passing automated run; real execution in Chrome, Firefox and Edge NOT RUN / pending exact versions and results |
 
 ## 4. Security requirements and objectives
 
@@ -68,7 +68,7 @@ The SRS identifies its numerical quality targets as proposed team targets (assum
 | SEC-REQ-03 | Sender identity taken from the connection, not the payload — Must | `sr03_server_assigned_sender.test.js` | SYS-06 | Automated suite included in reported passing run |
 | SEC-REQ-04 | Messages delivered only to room members — Must | `sr04_room_restricted_delivery.test.js` | SYS-05, SYS-10 | Automated suite included in reported passing run |
 | SEC-REQ-05 | Validate client fields and render user text as plain text — Must | `sr05_input_validation.test.js`, `security_requirements.test.js` | SYS-11 | Automated suites included in reported passing run |
-| SEC-REQ-06 | Token is random (at least 128 bits), expires after 24 hours, and is invalidated immediately on logout — Must | `sr02_authenticated_sockets.test.js`, `security_requirements.test.js`, `fr04_user_logout.test.js` | SYS-13 | Automated suites included in reported passing run; confirm all three token properties are explicitly asserted |
+| SEC-REQ-06 | Token is random (at least 128 bits), expires after 24 hours, and is invalidated immediately on logout — Must | `sr02_authenticated_sockets.test.js`, `security_requirements.test.js`, `nr04_nr10_sr06_reliability_security.test.js` | SYS-13 | Explicit automated assertions verified in repository: 64-character hex/unique token, 24-hour expiry and immediate invalidation/attached-socket closure; included in reported passing run |
 | SEC-REQ-07 | Reject login for 5 minutes after 5 consecutive failures for one username — Should | `sr07_login_attempt_lockout.test.js`, `security_requirements.test.js` | SYS-12 | Automated suites included in reported passing run |
 | SEC-REQ-08 | Use HTTPS and WSS for deployments beyond localhost — Should | `sr08_tls.test.js` | Verify configured deployment | Automated suite included in reported passing run; deployment configuration must also be checked |
 
@@ -97,3 +97,17 @@ This matrix is based on the approved SRS and the repository's current test inven
 
 ### Performance evidence update — 9 November 2026
 The supplied load-test output supports a passing localhost run for NFR-01 and NFR-07: 20 authenticated users across five rooms; 100/100 messages reached all expected room members within 1 second (p50 9.75 ms, p95 22.85 ms, max 38.13 ms). The supplied login benchmark supports a passing localhost run for NFR-02: 10 iterations, average 188.77 ms and p95 398.95 ms against a 2,000 ms target. Both commands exited with code 0. The SRS target environment is a LAN, so these local results are not presented as LAN acceptance. Raw outputs are intended for `docs/test-evidence/nfr01-nfr07-load-output.txt` and `docs/test-evidence/nfr02-login-benchmark.txt`; commit those files to retain the evidence.
+
+
+## 8. Verification-method clarification
+
+Review of the current test source confirms the following distinctions:
+
+- SEC-REQ-06 is explicitly asserted for 256-bit hexadecimal token shape/uniqueness, 24-hour expiry and immediate logout invalidation/socket closure.
+- NR-04 automated checks inspect retry configuration, browser online-event handling and room rejoin code. They do not measure reconnect time during a real network outage.
+- NR-06 automated checks inspect the default General room, quick-start copy and registration auto-join behaviour. They do not constitute a five-person usability study.
+- NR-08 automated checks validate selected script syntax/logic and README references. They do not constitute an independently timed clean installation or reviewer-led module count.
+- NR-10 automated checks inspect standard API usage and absence of selected vendor-prefixed JavaScript APIs. They do not replace running the app in the three target browsers.
+- FR-21 automated checks verify the generic safe error constant, selected source patterns and server-side logging. A controlled runtime fault-injection result remains separate evidence.
+
+The current NFR-05 harness uses a single local room and does not verify per-recipient delivery or memory thresholds. Its two-hour result remains pending until the complete 120-minute run is supplied and reviewed. See `Performance_Test_Report.md` and `Final_Validation_Checklist.md`.
