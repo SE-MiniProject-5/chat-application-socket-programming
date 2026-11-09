@@ -55,3 +55,52 @@ Manual system/browser results have not been supplied and are not claimed as pass
 
 ## 8. Conclusion
 The captured automated run passed 181 tests across 39 suites with zero failures, skips, or cancellations. Final project sign-off still requires manual system-validation evidence, SRS traceability reconciliation, and any performance evidence required by the approved SRS.
+
+
+## 7. Performance execution evidence (9 November 2026)
+
+The project member supplied successful outputs from the repository's load test and login benchmark. Both commands exited with code 0.
+
+### NFR-01 / NFR-07: WebSocket load test
+
+| Measurement | Observed result |
+|---|---:|
+| Authenticated concurrent users | 20 |
+| Rooms | 5 |
+| Messages measured | 100 |
+| Messages delivered to every member within 1,000 ms | 100/100 (100.0%) |
+| p50 end-to-end room delivery | 9.75 ms |
+| p95 end-to-end room delivery | 22.85 ms |
+| Maximum observed delivery | 38.13 ms |
+| Script result | PASS |
+| Process exit code | 0 |
+
+The test script created an isolated server and SQLite database and connected 20 authenticated WebSocket clients across five rooms. It measured delivery until every expected member of the sender's room had received each message.
+
+**Interpretation:** The run satisfied the script's NFR-01 threshold and the NFR-07 concurrency/room-count conditions. The test ran against localhost (127.0.0.1), not a LAN deployment. Therefore, it is evidence for the local test environment and does not establish the SRS's LAN performance target.
+
+### NFR-02: Login and room-list benchmark
+
+| Measurement | Observed result |
+|---|---:|
+| Base URL | http://127.0.0.1:3000 |
+| Iterations | 10 |
+| Average login + room-list time | 188.77 ms |
+| p50 | 153.72 ms |
+| p95 | 398.95 ms |
+| Maximum | 398.95 ms |
+| SRS target | ≤ 2,000 ms |
+| Script result | PASS |
+| Process exit code | 0 |
+
+**Interpretation:** The local benchmark's p95 was below the 2,000 ms threshold. The SRS verification target specifies a LAN, whereas this run used localhost; confirm on the intended LAN before claiming full environment-level acceptance.
+
+### Evidence files and limitations
+
+The project member reports saving the raw command output as:
+- `docs/test-evidence/nfr01-nfr07-load-output.txt`
+- `docs/test-evidence/nfr02-login-benchmark.txt`
+
+These raw files must be committed to the repository to make the evidence available to reviewers. The benchmark used a dedicated test account; credentials are intentionally excluded from this report and must not be committed.
+
+NFR-05's two-hour soak test and manual system/browser validation remain outstanding. No result is inferred for tests that have not been run.
