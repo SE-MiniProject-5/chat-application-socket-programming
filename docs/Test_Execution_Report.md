@@ -26,7 +26,7 @@ The project member supplied the complete TAP output and run metadata for the fol
 | Environment | Windows PowerShell |
 | Node.js / npm | v22.20.0 / 10.9.3 |
 | Process exit code | 0 |
-| Raw evidence | `docs/test-evidence/full-test-output.txt` and `docs/test-evidence/test-metadata.txt` |
+| Raw evidence | `docs/test-evidence/full-test-output.txt` and `docs/test-evidence/test-metadata.txt` (both committed) |
 
 **Automated result: PASS.** The SQLite experimental warning appeared during execution but did not affect the successful exit status.
 
@@ -97,11 +97,11 @@ The test script created an isolated server and SQLite database and connected 20 
 
 ### Evidence files and limitations
 
-The project member reports saving the raw command output as:
+The raw command output is committed as:
 - `docs/test-evidence/nfr01-nfr07-load-output.txt`
 - `docs/test-evidence/nfr02-login-benchmark.txt`
 
-These raw files must be committed to the repository to make the evidence available to reviewers. The benchmark used a dedicated test account; credentials are intentionally excluded from this report and must not be committed.
+Both raw output files are committed and available to reviewers. The benchmark used a dedicated test account; credentials are intentionally excluded from this report and must not be committed. An earlier `docs/test-evidence/soak-test.txt` is only an approximately 8-minute partial run with no final summary; it is not acceptance evidence for the 120-minute target.
 
 NFR-05's two-hour soak test and manual system/browser validation remain outstanding. No result is inferred for tests that have not been run.
 
