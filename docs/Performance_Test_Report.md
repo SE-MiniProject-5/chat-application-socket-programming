@@ -55,11 +55,11 @@ The script starts an isolated local server and temporary SQLite database, authen
 **Limitation:** The SRS specifies a LAN environment. This localhost result is not represented as LAN acceptance.
 
 ## 4. Evidence files
-The project member reports that the console outputs were saved as:
-- `docs/test-evidence/nfr01-nfr07-load-output.txt`
-- `docs/test-evidence/nfr02-login-benchmark.txt`
+The console outputs are present in the repository at:
+- [`docs/test-evidence/nfr01-nfr07-load-output.txt`](test-evidence/nfr01-nfr07-load-output.txt) — committed.
+- [`docs/test-evidence/nfr02-login-benchmark.txt`](test-evidence/nfr02-login-benchmark.txt) — committed.
 
-These files must be committed to the repository. Do not include passwords, session tokens, or other credentials in evidence.
+The repository also contains `docs/test-evidence/soak-test.txt`, but the captured file ends at approximately elapsed=8m and has no final JSON summary. It is an incomplete run and is not NFR-05 acceptance evidence. Save the full new 120-minute run as `docs/test-evidence/nfr05-soak-output.txt`. Do not include passwords, session tokens, or other credentials in evidence.
 
 ## 5. Remaining performance validation
 - NFR-01: repeat/confirm on the intended LAN if final acceptance requires the SRS environment.
