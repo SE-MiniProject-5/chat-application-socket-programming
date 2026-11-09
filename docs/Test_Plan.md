@@ -71,7 +71,7 @@ The supplied local load-test output records 20 authenticated WebSocket users acr
 
 The supplied login benchmark ran 10 iterations against `http://127.0.0.1:3000`. Average login-plus-room-list time was 188.77 ms, p50 153.72 ms, and p95 / maximum 398.95 ms; the script exited 0.
 
-These results satisfy the scripts' configured thresholds in the localhost environment. Since the SRS targets specify LAN conditions, repeat or confirm measurements on the intended LAN before final LAN acceptance. The two-hour NFR-05 soak test and manual browser validation remain pending. Raw output files should be committed under `docs/test-evidence/`; do not include test credentials.
+These results satisfy the scripts' configured thresholds in the localhost environment. Since the SRS targets specify LAN conditions, repeat or confirm measurements on the intended LAN before final LAN acceptance. The two-hour NFR-05 soak test and manual browser validation remain pending. The raw output files are committed under `docs/test-evidence/`. An existing `soak-test.txt` is only an approximately 8-minute partial run and does not satisfy the 120-minute target. Do not include test credentials.
 
 
 ## 12. Final validation work remaining
