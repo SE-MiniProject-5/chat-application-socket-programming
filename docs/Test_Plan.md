@@ -71,7 +71,7 @@ The supplied local load-test output records 20 authenticated WebSocket users acr
 
 The supplied login benchmark ran 10 iterations against `http://127.0.0.1:3000`. Average login-plus-room-list time was 188.77 ms, p50 153.72 ms, and p95 / maximum 398.95 ms; the script exited 0.
 
-These results satisfy the scripts' configured thresholds in the localhost environment. Since the SRS targets specify LAN conditions, repeat or confirm measurements on the intended LAN before final LAN acceptance. The two-hour NFR-05 soak test and manual browser validation remain pending. The raw output files are committed under `docs/test-evidence/`. An existing `soak-test.txt` is only an approximately 8-minute partial run and does not satisfy the 120-minute target. Do not include test credentials.
+These results satisfy the scripts' configured thresholds in the localhost environment. Since the SRS targets specify LAN conditions, repeat or confirm measurements on the intended LAN before final LAN acceptance. The NFR-05 two-hour soak run is complete and its final JSON summary and exit code are committed as `docs/test-evidence/nfr05-soak-output.txt`; the earlier `soak-test.txt` remains an approximately 8-minute partial historical run. Manual browser validation remains pending. Do not include test credentials.
 
 
 ## 12. Final validation work remaining
@@ -79,7 +79,7 @@ These results satisfy the scripts' configured thresholds in the localhost enviro
 The following evidence items are not inferred from the automated suite and must be completed before final acceptance:
 
 1. Complete SYS-01 through SYS-14 using the execution steps in `System_Validation_Report.md`; retain labelled evidence.
-2. Complete the default 120-minute NFR-05 run with 20 users and retain the entire output. Report the soak harness's single-room/local limitations accurately.
+2. NFR-05 two-hour run is complete and recorded. Its PASS is limited to the harness checks; the full periodic terminal log was not supplied, and the harness uses one local room without per-recipient delivery or memory-threshold assertions.
 3. Conduct the NFR-06 first-use study with five first-time participants and record individual times; the existing automated test is not a substitute.
 4. Have a reviewer perform the NFR-08 module review and time a clean setup; existing source checks do not measure either activity.
 5. Execute SYS-14 in Chrome, Firefox and Edge, recording exact versions and results; existing NR-10 checks are source-level only.
