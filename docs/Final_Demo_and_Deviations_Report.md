@@ -66,9 +66,16 @@ Do not enter a deviation merely because a test has not yet been executed; record
 | System Validation Report | `docs/System_Validation_Report.md` | Manual results pending |
 | Performance Test Report | `docs/Performance_Test_Report.md` | NFR-05 harness PASS; NFR-01/NFR-02 localhost results; LAN confirmation may still be required |
 | Traceability Matrix | `docs/Traceability_Matrix.md` | Updated |
-| Video | To record | Pending |
+| Sprint 1 demo video | `videos/sprint-1.webm` | Present in repository; not assessed as final demo |
+| Sprint 2 demo video | `videos/sprint-2.webm` | Present in repository; not assessed as final demo |
+| Final demonstration video | To record/upload | Pending verification of required duration/content |
 | Deviation approvals | To record | Pending |
 
 ## 7. Conclusion
 
 The automated test results and local performance evidence, including the completed two-hour NFR-05 harness run, are recorded in their respective reports. The final demonstration video, manual system validation, remaining NFR evidence and approved deviation review must be completed before final sign-off.
+
+
+## 8. Existing sprint video assets
+
+The repository currently contains `videos/sprint-1.webm` and `videos/sprint-2.webm`. These are retained sprint artifacts. Their presence alone does not establish that the final submission's required two-minute demonstration has been recorded, that the final version is shown, or that the video is accessible to the evaluator. Confirm the assignment's final-demo duration requirement, record the final product from the intended commit, and link the resulting artifact here.
