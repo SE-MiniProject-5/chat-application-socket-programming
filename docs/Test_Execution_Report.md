@@ -1,344 +1,47 @@
-\# Test Execution Report
+# Test Execution Report
+## Chat Application using Socket Programming and WebSockets
 
-\## Chat Application Using Socket Programming and WebSockets
+**Document ID:** TER-001 | **Version:** 2.0  
+**Status:** Updated; raw evidence and exact run metadata to be attached  
+**Report updated:** 9 November 2026 | **Assignment window:** 2–6 November 2026
 
+## 1. Purpose
+Records automated and system-level test execution. Results must be tied to a source commit and supported by console output, CI logs, screenshots, or other evidence.
 
+## 2. Execution summary
+The project member reports that the complete `npm test` suite now passes after the SR-02 test-stability correction.
 
-\*\*Document Status:\*\* Draft  
-
-\*\*Version:\*\* 1.0  
-
-\*\*Project:\*\* Chat Application Using Socket Programming and WebSockets  
-
-\*\*Prepared By:\*\* Testing Team Member  
-
-\*\*Test Execution Status:\*\* Not Started
-
-
-
-\---
-
-
-
-\## 1. Introduction
-
-
-
-\### 1.1 Purpose
-
-
-
-This document records the execution of test cases for the chat application. It provides a structured record of the test environment, execution status, observed results, defects, and overall testing progress.
-
-
-
-The report will be updated as testing progresses.
-
-
-
-\### 1.2 Scope
-
-
-
-The proposed testing scope includes:
-
-
-
-\- User registration and authentication
-
-\- WebSocket connection establishment
-
-\- Sending and receiving messages
-
-\- Communication between multiple users
-
-\- Chat history
-
-\- Online/offline status
-
-\- Client disconnection handling
-
-\- Invalid input handling
-
-\- Unauthorized-access prevention
-
-\- Communication security
-
-\- Response-time observation
-
-\- Connection and messaging stability
-
-
-
-The actual implementation and approved requirements must be checked before these tests are executed.
-
-
-
-\### 1.3 References
-
-
-
-\- `docs/TestPlan/Test\_Plan.md`
-
-\- `docs/TestPlan/Test\_Cases.md`
-
-\- `docs/TestPlan/Traceability\_Matrix.md`
-
-\- Project Software Requirements Specification (SRS), when available
-
-\- Project implementation and configuration documentation, when available
-
-
-
-\## 2. Test Environment
-
-
-
-| Item | Details |
-
+| Item | Current record |
 |---|---|
-
-| Operating system | TBD |
-
-| Programming language | TBD |
-
-| Application framework | TBD |
-
-| Communication technology | Socket programming and/or WebSockets, to be confirmed from implementation |
-
-| Database | TBD, if applicable |
-
-| Browser or client application | TBD |
-
-| Test tools | TBD |
-
-| Application version or commit | TBD |
-
-| Test date | TBD |
-
-
-
-The environment details must be completed after inspecting the implementation and establishing the test setup.
-
-
-
-\## 3. Test Execution Summary
-
-
-
-No test execution results are recorded in this initial draft.
-
-
-
-| Metric | Result |
-
-|---|---:|
-
-| Total proposed test cases | 15 |
-
-| Passed | 0 confirmed |
-
-| Failed | 0 confirmed |
-
-| Blocked | 0 confirmed |
-
-| Not Run | 15 pending execution |
-
-| Execution completion | 0% recorded |
-
-
-
-\*\*Important:\*\* The counts above describe the initial reporting state, not evidence that the application has been tested. They must be updated when execution begins. A test case must not be marked as passed or failed without recorded execution evidence.
-
-
-
-\## 4. Test Execution Records
-
-
-
-The following table tracks the proposed test cases documented in `Test\_Cases.md`.
-
-
-
-| Test Case ID | Test Area | Execution Status | Actual Result | Evidence / Remarks |
-
-|---|---|---|---|---|
-
-| TC-01 | User registration | NOT RUN | Not recorded | Pending test setup |
-
-| TC-02 | Valid authentication | NOT RUN | Not recorded | Pending test setup |
-
-| TC-03 | Invalid authentication | NOT RUN | Not recorded | Pending test setup |
-
-| TC-04 | WebSocket connection | NOT RUN | Not recorded | Pending test setup |
-
-| TC-05 | Sending messages | NOT RUN | Not recorded | Pending test setup |
-
-| TC-06 | Receiving messages | NOT RUN | Not recorded | Pending test setup |
-
-| TC-07 | Multiple users | NOT RUN | Not recorded | Pending test setup |
-
-| TC-08 | Chat history | NOT RUN | Not recorded | Confirm feature availability |
-
-| TC-09 | Online/offline status | NOT RUN | Not recorded | Confirm feature availability |
-
-| TC-10 | Client disconnection | NOT RUN | Not recorded | Pending test setup |
-
-| TC-11 | Invalid message input | NOT RUN | Not recorded | Pending test setup |
-
-| TC-12 | Unauthorized access | NOT RUN | Not recorded | Pending test setup |
-
-| TC-13 | Communication security | NOT RUN | Not recorded | Confirm security requirements |
-
-| TC-14 | Response-time observation | NOT RUN | Not recorded | Define measurable acceptance criteria |
-
-| TC-15 | Connection and messaging stability | NOT RUN | Not recorded | Define test duration and workload |
-
-
-
-\### 4.1 Status Definitions
-
-
-
-\- \*\*NOT RUN:\*\* The test has not been executed.
-
-\- \*\*PASS:\*\* The observed result satisfies the documented expected result and acceptance criteria.
-
-\- \*\*FAIL:\*\* The observed result does not satisfy the documented expected result or acceptance criteria.
-
-\- \*\*BLOCKED:\*\* Execution cannot proceed because a dependency, environment, or prerequisite is unavailable.
-
-\- \*\*NOT APPLICABLE:\*\* The test is confirmed to be outside the implemented or approved scope, with a documented justification.
-
-
-
-\## 5. Defect Summary
-
-
-
-No defect conclusions have been established in this draft.
-
-
-
-| Defect ID | Related Test Case | Summary | Severity | Status |
-
-|---|---|---|---|---|
-
-| TBD | TBD | No defects recorded yet | TBD | Not assessed |
-
-
-
-A defect entry should be added only when an issue has been observed and documented. If no defects are found during testing, the final report should state that accurately.
-
-
-
-\## 6. Test Evidence
-
-
-
-Evidence may include:
-
-
-
-\- Screenshots of test execution
-
-\- Application and server logs
-
-\- Relevant console output
-
-\- Network or WebSocket inspection results
-
-\- Automated test output, if automated tests are implemented
-
-\- Steps and test data required to reproduce a failure
-
-
-
-Evidence should be labelled with the corresponding test case ID and stored in an agreed project location.
-
-
-
-No execution evidence is attached to this initial draft.
-
-
-
-\## 7. Risks and Limitations
-
-
-
-The following items may affect testing:
-
-
-
-1\. The approved SRS and final requirement identifiers must be confirmed.
-
-2\. The implemented features and their acceptance criteria must be verified.
-
-3\. The application must be runnable in a known test environment.
-
-4\. Performance and concurrency acceptance thresholds must be established before drawing conclusions.
-
-5\. Security tests must be aligned with the application's intended architecture and authorized test environment.
-
-6\. Test results remain unverified until actual execution and evidence collection are completed.
-
-
-
-\## 8. Exit Criteria
-
-
-
-Testing may be considered complete for the agreed scope when:
-
-
-
-\- All applicable planned test cases have an execution status.
-
-\- Failed or blocked tests are documented with explanations.
-
-\- Relevant defects have been recorded and tracked.
-
-\- Requirements-to-test-case traceability has been reviewed.
-
-\- Required evidence has been collected.
-
-\- Outstanding risks and limitations have been documented.
-
-\- The report has been reviewed against the approved SRS and implemented application.
-
-
-
-\## 9. Conclusion
-
-
-
-This document establishes the initial structure for recording test execution. It does not establish that the application is functional, secure, performant, or defect-free.
-
-
-
-The final conclusion will be written after the relevant test cases have been executed and their results reviewed.
-
-
-
-\## 10. Review and Approval
-
-
-
-| Role | Name | Status |
-
+| Automated command | `npm test` |
+| Overall result | PASS — reported by project member |
+| Exact tests passed | Pending capture from final test output |
+| Exact tests failed | 0 reported |
+| Skipped/cancelled | Pending capture |
+| Duration | Pending capture |
+| Execution date/time | Pending capture |
+| Commit SHA | Pending capture |
+| Environment | Windows PowerShell; exact Node/npm versions pending |
+| Raw evidence | Attach terminal output or GitHub Actions run URL |
+
+Populate pending fields from the final successful run; this summary is not a substitute for raw output.
+
+## 3. Automated execution
+The npm test script invokes the test files listed in `package.json`. The inventory is maintained in `Test_Cases.md` and includes functional, integration, security, reliability, and non-functional verification.
+
+## 4. System validation
+Manual end-to-end results are recorded separately in `System_Validation_Report.md`. Automated test success alone does not establish that all browser workflows or manual scenarios passed.
+
+## 5. Defects and retesting
+The SR-02 test instability was addressed by making expiry conditions deterministic rather than relying on a globally shortened 1.5-second session TTL. TC-SR02-07 and TC-SR02-08 were reported passing in isolated runs; the project member subsequently reported that the full suite passed. Verify and record the PR/commit and attach the final full-suite evidence. This was a test-reliability correction and is not, by itself, evidence of a production authentication defect.
+
+| Reference | Description | Current status |
 |---|---|---|
+| PR #76 | Deterministic SR-02 session expiry test setup | Record merge status and merge commit |
+| Other defects | No additional confirmed defects supplied | Not assessed |
 
-| Prepared By | Testing Team Member | Draft |
+## 6. Limitations
+Exact automated totals and run metadata have not been copied into this report. Manual system results/evidence have not been supplied. Performance/load/soak results must be reported separately if those scripts were executed. Coverage is reported in dedicated documents.
 
-| Reviewed By | TBD | Pending |
-
-| Approved By | TBD | Pending |
-
-
-
-\---
-
-
-
-\*\*End of Document\*\*
-
+## 7. Conclusion
+A successful full automated run has been reported by the project member. Final sign-off requires raw output, exact totals, commit SHA, and completion of system-validation and coverage evidence.
