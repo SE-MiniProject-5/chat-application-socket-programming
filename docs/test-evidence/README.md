@@ -10,6 +10,7 @@ This directory contains the raw outputs and metadata referenced by the project t
 | `test-metadata.txt` | Automated test run metadata | 9 November 2026; commit `fda8aa45f62cb0a4cffeb60348f10e13decd9d75`; Node v22.20.0; npm 10.9.3; exit code 0 |
 | `coverage-output.txt` | c8 terminal output | Coverage summary for configured `src/` scope |
 | `coverage-summary.json` | Machine-readable c8 summary | Source coverage percentages reported in coverage reports |
+| `../coverage/index.html` and per-file HTML reports | Browsable c8 HTML report | Committed at repository root under `coverage/` |
 | `coverage-metadata.txt` | Coverage run metadata | Records commit `6fb3749c690734ee2bca3a5a1cb1971ffa73c9ac` and c8 `1.0.0`; note discrepancy with package-lock c8 `12.0.0`, which must be reconciled |
 | `nfr01-nfr07-load-output.txt` | WebSocket load test | 20 users / 5 rooms; 100/100 within 1 second; localhost run |
 | `nfr02-login-benchmark.txt` | Login + room-list benchmark | 10 iterations; p95 398.95 ms; localhost run |
