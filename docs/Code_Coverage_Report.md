@@ -15,8 +15,6 @@ npx c8 --all --include=src --exclude=tests --reporter=text --reporter=html --rep
 The project manifest declares c8 as `^12.0.0`. The configured scope instruments JavaScript under `src/` and excludes `tests/`. Browser-side JavaScript under `public/` is not included.
 
 ## 3. Overall results
-<badge>Measured</badge>
-
 | Metric | Covered | Total | Coverage |
 |---|---:|---:|---:|
 | Statements | 1,184 | 1,581 | 74.88% |
