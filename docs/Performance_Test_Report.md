@@ -1,7 +1,7 @@
 # Performance Test Report
 ## Chat Application using Socket Programming and WebSockets
 
-**Document ID:** PTR-001 | **Version:** 1.0 | **Execution date:** 9 November 2026  
+**Document ID:** PTR-001 | **Version:** 1.1 | **Execution date:** 9 November 2026  
 **Evidence source:** Console output supplied by the project member. The assistant did not independently execute these tests.
 
 ## 1. Scope
@@ -71,3 +71,22 @@ These files must be committed to the repository. Do not include passwords, sessi
 
 ## 6. Conclusion
 The supplied outputs show successful local execution of the NFR-01/NFR-07 load test and NFR-02 login benchmark, both with exit code 0. These are useful measured results, with the localhost-versus-LAN limitation stated above. They do not establish completion of the remaining non-functional or manual validation requirements.
+
+
+## 7. NFR-05 soak harness — measurement scope
+
+The current `scripts/nr05-soak-test.js` defaults to 20 authenticated WebSocket users and 120 minutes. It starts an isolated local server on loopback, creates a temporary SQLite database and one room, connects the clients, and sends a message approximately every 10 seconds. Periodic output records elapsed minutes, sent messages, received WebSocket event count, connection-failure count and process resident memory (RSS).
+
+The final summary reports configured users, elapsed duration, sent count, received-event count, connection failures and a `passed` boolean. The script sets its pass condition from at least 20 users, elapsed duration meeting the configured duration, and zero connection failures.
+
+**Important measurement limitation:** the harness uses one room and does not assert that every expected recipient received each message, verify message ordering/completeness, or apply a memory-growth threshold. It therefore provides an endurance/connection-stability observation for this local harness; it is not a separate multi-room delivery test, LAN test, or proof of bounded memory use. Keep the report wording aligned with these exact checks.
+
+**Acceptance execution:** use the default 120-minute run without setting `DURATION_MINUTES` to a shorter value. Preserve the complete terminal output and final JSON summary in `docs/test-evidence/nfr05-soak-output.txt`. Record the exit code. Until the full run is complete and its output reviewed, NFR-05 remains NOT RUN / pending evidence.
+
+## 8. NFR-06, NFR-08 and NFR-10 evidence distinction
+
+- **NFR-06:** `tests/nr06_first_use_success.test.js` checks the seeded General room, quick-start text and auto-join code path. These are automated implementation checks, not the SRS's five-person usability study. Record five first-time participants and actual completion times separately.
+- **NFR-08:** `tests/nr02_nr05_nr08_verification.test.js` checks script syntax, selected benchmark logic and README setup references. It does not itself time a clean setup or conduct a reviewer-led module count. Record both separately.
+- **NFR-10:** the reliability/security test checks use of standard browser APIs and absence of selected vendor-prefixed APIs. This is a source-level baseline, not proof that the app was executed in Chrome, Firefox and Edge. Record exact browser versions and actual workflow results.
+
+See `Final_Validation_Checklist.md` for the corresponding evidence forms and procedures.
