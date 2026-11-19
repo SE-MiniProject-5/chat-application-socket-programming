@@ -126,3 +126,27 @@ The project member supplied the completed two-hour run summary: 20 users, 120 mi
 
 ### NFR-08 source inventory note
 A static inventory of the current `src/` directory contains nine JavaScript modules: `auth.js`, `chatManager.js`, `db.js`, `loginAttemptLimiter.js`, `rooms.js`, `server.js`, `sessionManager.js`, `tls.js` and `validation.js`. This exceeds the SRS minimum of four modules. The independent reviewer sign-off and timed clean setup (15-minute target) remain NOT RUN, so NFR-08 is only partially evidenced and is not marked fully accepted.
+
+---
+
+## 9. Final requirements verification update — 19 November 2026
+
+**Project-owner disposition: all required functional, non-functional, security and system validation activities have been completed; the application is reported working and satisfactory.** This dated update supersedes earlier NOT RUN / pending dispositions in this matrix.
+
+| Requirement group | Final status | Basis |
+|---|---|---|
+| Must functional requirements FR-01–FR-20 | Completed; PASS reported by project owner | Owner confirmation, 19 November 2026; automated mapping and recorded test run retained above |
+| FR-21 safe server errors | Completed; PASS reported by project owner | Owner confirmation of completed fault validation |
+| FR-22 / FR-23 | Optional features; completed/tested per owner | Remain Optional in approved scope |
+| NFR-01 / NFR-02 | Completed; PASS reported by project owner, including required environment validation | Owner confirmation; previously recorded localhost metrics remain labelled localhost |
+| NFR-03 / NFR-04 | Completed; PASS reported by project owner | Owner confirmation and automated test mapping |
+| NFR-05 / NFR-07 | Completed; PASS | Recorded soak/load results above; owner confirms remaining required validation |
+| NFR-06 | Completed; PASS reported by project owner | Owner confirmation of usability study |
+| NFR-08 | Completed; PASS reported by project owner | Owner confirmation of independent review/setup validation |
+| NFR-09 | Completed; PASS | Automated security suites recorded above; owner confirms all required testing |
+| NFR-10 | Completed; PASS reported by project owner | Owner confirmation of Chrome/Firefox/Edge testing |
+| SYS-01–SYS-14 | Completed; PASS reported by project owner | Owner confirmation, 19 November 2026 |
+
+The owner did not provide additional numerical results, exact browser versions, participant timings or per-test evidence paths in this conversation. No such values are invented. Previously measured localhost results continue to be described accurately as localhost evidence and are not relabelled as LAN measurements.
+
+**Traceability disposition: all required verification activities reported complete; ready for mentor review.**
