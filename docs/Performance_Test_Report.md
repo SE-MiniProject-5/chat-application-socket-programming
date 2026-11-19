@@ -108,3 +108,13 @@ See `Final_Validation_Checklist.md` for the corresponding evidence forms and pro
 | Disposition | PASS for the current harness's checks |
 
 The result was supplied by the project member after the two-hour run. The final JSON and exit code are preserved in `docs/test-evidence/nfr05-soak-output.txt`. The periodic console log was not supplied. The PASS disposition is limited to the script's own pass condition and is not a claim of multi-room delivery, per-recipient completeness/order, LAN operation, or bounded memory growth.
+
+---
+
+## Final performance validation update — 19 November 2026
+
+The project owner confirms that all required performance and non-functional validation activities, including the remaining environment-specific checks, have been completed and that the results are satisfactory.
+
+Previously recorded exact measurements remain unchanged and retain their original test conditions: NFR-01/NFR-07 and NFR-02 numeric values shown in this report are from localhost runs; the NFR-05 soak result is the recorded 20-user, 120-minute harness run. The owner confirms that any additional required LAN/acceptance checks were also completed. Their separate raw measurements were not supplied in this conversation, so no new numeric results are asserted here.
+
+**Final disposition:** Performance/NFR testing reported complete by the project owner; PASS for project handover. Earlier harness limitations and environment labels remain valid and are not erased by this completion update.
