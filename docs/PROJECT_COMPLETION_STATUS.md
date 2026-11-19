@@ -74,3 +74,17 @@ SYS-09 (typing indicator) and SYS-10 (private messaging) concern FR-22 and FR-23
 ## 6. Final disposition
 
 **Not yet eligible for final acceptance/sign-off.** The repository contains the implementation and substantial automated evidence, but final completion requires the outstanding real-world validation and approval records in Section 3. Once those records exist, update this report and the individual reports from the actual evidence, then obtain the required project/faculty sign-off.
+
+---
+
+## 7. Final completion update — 19 November 2026
+
+**Project owner confirmation:** The project owner has explicitly confirmed in this conversation that all previously listed manual, browser, usability, LAN, setup-review, network-recovery, fault-injection, deviation-review and final demonstration activities have been completed, that the application works, and that the results are satisfactory. No screenshot or evidence ZIP is required for this mentor-facing report update.
+
+**Final project status: COMPLETE — project owner reports all required tests and activities completed.** This supersedes the earlier pending disposition in this document.
+
+The detailed numeric measurements, browser build numbers, participant timings, setup duration, video URL and individual deviation approvals were not supplied in this conversation. They are therefore not fabricated or represented as independently inspected. The completion status above is recorded as the project owner's explicit attestation. Existing measured figures and their stated harness limitations remain unchanged.
+
+The project implementation, sprint work, repository documentation, recorded automated results, performance/soak results and CI history remain as described in the sections above. SYS-09 and SYS-10 remain optional SRS features; their execution does not change Must-scope acceptance.
+
+**Handover decision:** The project owner considers the implementation and required validation work complete and ready for mentor review/submission. Any mentor-specific signature or institutional approval is an external administrative step, not a code or test task.
