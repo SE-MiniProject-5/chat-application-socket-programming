@@ -104,3 +104,21 @@ The detailed remaining work and NFR evidence protocol are in `Final_Validation_C
 ## 10. NFR-05 soak evidence cross-reference
 
 The two-hour endurance run is recorded separately in `Performance_Test_Report.md`: 20 concurrent users, 120 minutes, 719 sent messages, 14,800 aggregate received WebSocket events, zero connection failures, `passed: true`, exit code 0. This is a harness-level NFR-05 result, not a substitute for the browser-based SYS-01–SYS-14 scenarios. Those manual system scenarios remain NOT RUN until executed and evidenced.
+
+---
+
+## 11. Final system validation update — 19 November 2026
+
+**Execution status: COMPLETE — PASS, as confirmed by the project owner.**
+
+The project owner has explicitly confirmed that all system scenarios SYS-01 through SYS-14 have been executed, that the application works, and that the results are satisfactory. This update supersedes the earlier NOT RUN / pending statements in Sections 3, 6, 8 and 10.
+
+| Scenario group | Final status | Result source |
+|---|---|---|
+| SYS-01 to SYS-08 | PASS — completed, project-owner confirmed | Owner confirmation, 19 November 2026 |
+| SYS-09 to SYS-10 | Completed; optional SRS features | Owner confirmation, 19 November 2026 |
+| SYS-11 to SYS-14 | PASS — completed, project-owner confirmed | Owner confirmation, 19 November 2026 |
+
+The project owner did not provide exact browser build numbers, environment versions, per-case timings, or individual screenshot/log paths in this conversation. Those details are intentionally left unspecified rather than invented. Screenshots are not required for this report update or for the mentor-facing completion statement.
+
+**Conclusion:** System validation is reported complete and passed by the project owner. The report is ready for mentor review. The earlier procedure and blank execution templates are retained as historical guidance; this dated completion update is the current disposition.
