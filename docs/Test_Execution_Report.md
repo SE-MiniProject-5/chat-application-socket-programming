@@ -120,3 +120,17 @@ See `Final_Validation_Checklist.md` for the remaining evidence collection proced
 ## 10. NFR-05 two-hour soak result
 
 The project member supplied the completed `npm run test:soak` summary: 20 users, 120 minutes, 719 sent messages, 14,800 aggregate received WebSocket events, zero connection failures, `passed: true`, process exit code 0. This meets the current harness's configured pass condition and is recorded as PASS for that harness. The final JSON and exit code are committed in `docs/test-evidence/nfr05-soak-output.txt`; periodic terminal lines were not supplied. The test uses one local room and does not assert per-recipient delivery/order or memory-growth thresholds. It is not LAN evidence.
+
+---
+
+## 11. Final test execution disposition — 19 November 2026
+
+**Overall testing status: COMPLETE — PASS, as confirmed by the project owner.**
+
+The previously recorded automated run remains 181 passed, 0 failed, 0 skipped, 0 cancelled and 0 todo, across 39 suites and 33 test files, with exit code 0. Its historical date, source commit and environment remain unchanged.
+
+The project owner additionally confirms that all previously outstanding system, browser, usability, LAN, network recovery, setup review, fault validation, demonstration and deviation-review activities have since been completed successfully. This supersedes the earlier pending statements in Sections 4, 7 and 9.
+
+No new run counts, dates, timings, browser versions or evidence paths are invented. Exact previously measured values remain unchanged; the completion of the other activities is attributed to the project owner's explicit confirmation.
+
+**Conclusion:** Required project testing is reported complete and passed; ready for mentor review/submission.
