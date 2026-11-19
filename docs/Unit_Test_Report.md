@@ -53,3 +53,13 @@ The files are retained unedited. The run's exact date, source commit, environmen
 
 ## 7. Conclusion
 The recorded automated run passed all 181 tests across 39 suites with no failures, skips, or cancellations. This result applies to the recorded commit and environment. It does not replace manual browser/system validation or performance testing.
+
+---
+
+## Final testing disposition — 19 November 2026
+
+The project owner confirms that all required tests have been completed and that the application works as expected. The recorded automated run remains **181 passed, 0 failed, 0 skipped, 0 cancelled**, across 39 suites and 33 test files, with exit code 0, on the recorded 9 November 2026 run.
+
+The project owner also confirms completion of the remaining required test activities described in the system, performance, security and traceability reports. This update does not alter the historical automated run counts or claim a new automated run on a later commit.
+
+**Final disposition: testing activities reported complete; PASS for project handover.**
