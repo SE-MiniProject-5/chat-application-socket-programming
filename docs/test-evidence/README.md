@@ -45,3 +45,13 @@ The NFR-05 final summary is already recorded above. It is not a pending file.
 ## Related completion record
 
 See [Project Completion Status and Final Handover](../PROJECT_COMPLETION_STATUS.md) for the audited repository state, complete/pending workstreams and final disposition.
+
+---
+
+## Final evidence and completion status — 19 November 2026
+
+The project owner confirms that all tests and validation activities previously listed as outstanding have been completed successfully, including system scenarios, browser compatibility, usability, LAN/performance acceptance, network recovery, setup/modularity review, fault validation, final demonstration and deviation review.
+
+For this mentor-facing completion update, screenshot uploads are not required. The repository's existing raw automated/performance evidence remains indexed above. The owner confirmation is the source for completion of the additional activities; no unprovided numeric measurements, browser versions, participant details or file paths are fabricated.
+
+**Evidence status:** Recorded repository artifacts retained; remaining execution activities confirmed complete by project owner. **Project testing: COMPLETE per owner confirmation.**
