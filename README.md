@@ -106,3 +106,11 @@ See [`docs/test-evidence/README.md`](docs/test-evidence/README.md) for the commi
 ### Latest NFR-05 result
 
 The completed 20-user / 120-minute soak result is recorded at [`docs/test-evidence/nfr05-soak-output.txt`](docs/test-evidence/nfr05-soak-output.txt). It reports 719 sent messages, 14,800 aggregate received WebSocket events, zero connection failures, `passed: true` and exit code 0. See the Performance Test Report for the harness limitations.
+
+---
+
+## Project completion status — 19 November 2026
+
+**The project owner confirms that all required implementation, testing, validation, performance, browser compatibility, usability, setup review, fault validation, final demonstration and documentation activities are complete. The application is working and the project is ready for mentor review/submission.**
+
+See [Project Completion Status and Final Handover](docs/PROJECT_COMPLETION_STATUS.md) for the consolidated status and report index. Historical test measurements and their documented scope/limitations are retained as recorded.
