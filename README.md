@@ -66,7 +66,7 @@ Pull requests and pushes to `main` run the automated test suite using Node.js 22
 The SQLite database is created locally and should not be committed. See `.gitignore` for generated files.
 ## Project documentation
 
-See the `docs/` directory for the submitted project documentation and sprint artefacts.
+See the `docs/` directory for the submitted project documentation and sprint artefacts. The [Project Completion Status and Final Handover](docs/PROJECT_COMPLETION_STATUS.md) records the latest evidence-backed completion state and any remaining acceptance work.
 
 ## Non-functional requirement load test (NR-01 / NR-07)
 
