@@ -79,3 +79,17 @@ The automated test results and local performance evidence, including the complet
 ## 8. Existing sprint video assets
 
 The repository currently contains `videos/sprint-1.webm` and `videos/sprint-2.webm`. These are retained sprint artifacts. Their presence alone does not establish that the final submission's required two-minute demonstration has been recorded, that the final version is shown, or that the video is accessible to the evaluator. Confirm the assignment's final-demo duration requirement, record the final product from the intended commit, and link the resulting artifact here.
+
+---
+
+## 7. Final demonstration and deviation review update — 19 November 2026
+
+**Status: COMPLETED — project owner confirmed.**
+
+The project owner has confirmed that the final demonstration and the required review of deviations against the project documentation have been completed. The application works and the project is ready for mentor review/submission.
+
+The exact final video filename/URL, duration, commit demonstrated, individual deviation descriptions, baseline section numbers and approver details were not supplied in this conversation. They remain unspecified here rather than being fabricated. The owner confirmation is the source for this completion status. No screenshot upload is required for the purpose of updating this report.
+
+FR-22 (typing indicator) and FR-23 (private messaging) retain their approved Optional classification; their implementation/testing does not alter the Must-scope baseline.
+
+This dated update supersedes the earlier “recording and final review pending” status. Any mentor signature or formal institutional acceptance remains subject to the mentor's own review process.
