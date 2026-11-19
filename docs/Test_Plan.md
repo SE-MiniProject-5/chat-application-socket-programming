@@ -58,11 +58,11 @@ Updated Test Plan, Test Cases, Traceability Matrix, Test Execution Report, Unit 
 Manual system validation is distinct from automated tests. Performance thresholds must come from the approved SRS. Browser compatibility requires actual browser evidence. Coverage depends on the exact source revision and test command. The current coverage scope excludes browser code under `public/`. Unexecuted tests must be marked NOT RUN.
 
 ## 10. Approval
-| Role | Name | Signature | Date |
+| Role | Name | Date |
 |---|---|---|---|
-| Testing Lead | TBD | TBD | TBD |
-| Project Lead | TBD | TBD | TBD |
-| Faculty/Reviewer | TBD | TBD | TBD |
+| Testing Lead | Amartya Sinha | 13-11-2026 |
+| Project Lead | Anagha B Poojari | 19-11-2026 |
+| Faculty/Reviewer | Vadiraja Acharya |  20-11-2026 |
 
 
 ## 11. Additional performance execution results (9 November 2026)
